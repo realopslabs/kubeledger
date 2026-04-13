@@ -5,7 +5,7 @@ description = "Open source Kubernetes resource usage tracking, accounting and op
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=3.0.0",
+    "flask>=3.1.3",
     "flask-cors>=6.0.0",
     "requests>=2.32.3",
     "rrdtool>=0.1.16",
