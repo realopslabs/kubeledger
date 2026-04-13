@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "flask>=3.0.0",
     "flask-cors>=6.0.0",
-    "requests>=2.32.3",
+    "requests>=2.33.1",
     "rrdtool>=0.1.16",
     "prometheus-client>=0.20.0",
     "waitress>=3.0.1",
