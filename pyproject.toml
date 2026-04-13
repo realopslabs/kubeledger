@@ -12,7 +12,7 @@ dependencies = [
     "prometheus-client>=0.20.0",
     "waitress>=3.0.1",
     "urllib3>=2.6.3",
-    "werkzeug>=3.1.5",
+    "werkzeug>=3.1.8",
 ]
 authors = [{ name = "Rodrigue Chakode", email = "rodrigue.chakode@gmail.com" }]
 
