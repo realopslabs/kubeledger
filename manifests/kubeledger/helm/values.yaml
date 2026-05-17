@@ -59,6 +59,74 @@ service:
   port: 80
   targetPort: 5483
 
+# Optional MCP (Model Context Protocol) server.
+# When enabled, a second container is added to the pod, reusing the same image
+# with command override "python3 -u ./mcp_server.py". It reads static/data/*.json
+# in read-only mode and exposes the data to MCP clients (e.g. Claude Desktop)
+# via HTTP/SSE. Disabled by default — opt-in. See docs/kubeledger-mcp-spec.md.
+mcp:
+  enabled: false
+  # Port at which the MCP server listens inside the container, and the port
+  # exposed by the Service. Defaults to 5484 — one above the backend's 5483,
+  # to keep the two KubeLedger ports adjacent and memorable.
+  # Keep both aligned with the MCP server bind port.
+  service:
+    port: 5484
+    targetPort: 5484
+  # Per-container resource block for the MCP sidecar. The MCP server is light
+  # (JSON parsing + asyncio); the defaults reflect that.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    # limits:
+    #   cpu: 200m
+    #   memory: 256Mi
+
+# NetworkPolicy for the KubeLedger pod.
+# In v1 the MCP server has no authentication; access control relies entirely
+# on this NetworkPolicy. It is therefore enabled by default and covers BOTH
+# the backend (HTTP/UI) and the MCP ports. Empty source lists mean
+# deny-by-default: an operator must explicitly list authorized clients.
+# Requires a network plugin that enforces NetworkPolicy (e.g. OVN-Kubernetes
+# on OpenShift).
+networkPolicy:
+  enabled: true
+  # NetworkPolicyPeer entries (namespaceSelector / podSelector / ipBlock)
+  # authorized to reach the backend (UI + Flask API + /metrics). Empty list
+  # = deny-by-default. Examples (uncomment and adapt as needed):
+  #
+  # allowedSources:
+  #   # Pods opted-in via label inside the same namespace
+  #   - podSelector:
+  #       matchLabels:
+  #         kubeledger-client: "true"
+  #   # Any pod from a labelled namespace
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: monitoring
+  #   # Specific Prometheus pods scraping /metrics
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: openshift-monitoring
+  #     podSelector:
+  #       matchLabels:
+  #         app.kubernetes.io/name: prometheus
+  #   # A trusted CIDR (e.g. corporate ingress)
+  #   - ipBlock:
+  #       cidr: 10.0.0.0/16
+  allowedSources: []
+  # NetworkPolicyPeer entries authorized to reach the MCP server.
+  # Typically a stricter set than allowedSources. Same shape as above.
+  # Empty list = no source authorized — MCP unreachable, even when
+  # mcp.enabled is true. Example: only allow the AI assistant proxy pod.
+  #
+  # mcpAllowedSources:
+  #   - podSelector:
+  #       matchLabels:
+  #         app.kubernetes.io/name: claude-mcp-proxy
+  mcpAllowedSources: []
+
 ingress:
   enabled: false
   annotations: {}
