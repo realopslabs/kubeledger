@@ -18,6 +18,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
+- [MCP Integration (AI Assistant)](#mcp-integration-ai-assistant)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
 - [Configuration](#configuration)
@@ -159,72 +160,181 @@ kubectl port-forward svc/kubeledger 5483:80 -n kubeledger
 # Open http://localhost:5483 in your browser
 ```
 
-## Installation on Local Machine
+## MCP Integration (AI Assistant)
 
-### Install with Docker
+KubeLedger ships with an **optional MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server** that gives MCP-aware AI tools **direct access to the underlying analytics data** — the consolidated CPU, memory and GPU usage that the web UI is built on. MCP is an open standard adopted by a growing ecosystem: Anthropic's Claude Desktop and Claude Code, Google's Gemini CLI, IDE assistants such as Cursor, Windsurf and Cline, the MCP Inspector developer tool, and others.
 
-Requires `kubectl proxy` running locally to provide API access:
+Where the UI renders a fixed set of dashboards, the MCP exposes ten read-only tools that let an AI assistant combine, filter and aggregate this data into **custom rankings, namespace groupings, efficiency assessments, trend comparisons and narrative insights** — analyses the UI does not predefine.
+
+The server itself is **descriptive only**: it never reaches the Kubernetes API or RRD databases, embeds no LLM, and makes no recommendations. It exposes the data; the client provides the reasoning.
+
+Ten tools are available:
+
+| Tool | Purpose |
+|---|---|
+| `list_namespaces` | Discovered namespaces, classified application / system / special |
+| `describe_dataset` | Capabilities: metrics, scales, cost model, freshness |
+| `get_usage` | Usage time series per namespace for a (metric, scale) |
+| `get_top_consumers` | Ranking by usage on a given date |
+| `get_namespace_breakdown` | Proportional breakdown + concentration + cluster overhead |
+| `get_efficiency` | Aggregated `usage / requests` ratio per namespace |
+| `get_timeseries` | Hourly usage series over the last 7 days |
+| `compare_periods` | 14-day aggregate vs. monthly trajectory + trend direction |
+| `get_efficiency_timeseries` | Hourly efficiency factor (`rf`) series |
+| `group_namespaces` | Aggregate namespaces matching a glob pattern |
+
+Each response carries a `metadata` block with cost_model, unit, data window, source file and warnings. See [kubeledger-mcp-spec.md](kubeledger-mcp-spec.md) for the full specification.
+
+### 1. Enable the MCP container at deploy time
+
+The MCP container is **opt-in** — disabled by default. Enable it via the Helm chart:
 
 ```bash
-# Start kubectl proxy in background
-kubectl proxy &
-
-# Run KubeLedger
-docker run -d \
-  --net="host" \
-  --name kubeledger \
-  -v /var/lib/kubeledger:/data \
-  -e KL_DB_LOCATION=/data/db \
-  -e KL_K8S_API_ENDPOINT=http://127.0.0.1:8001 \
-  ghcr.io/realopslabs/kubeledger
+helm upgrade --install kubeledger ./manifests/kubeledger/helm \
+  -n kubeledger \
+  --set mcp.enabled=true
 ```
 
-### Access the Dashboard on Local Machine
+Enabling adds a second container `mcp` to the pod (same image, command `python3 -u ./mcp_server.py`), mounts the `static/data/` volume **read-only**, and adds a named port `mcp` (default `5484`) on the existing Service.
 
-The dashboard is available at http://localhost:5483.
+> **NetworkPolicy.** MCP v1 has no authentication at the tool layer — access control relies entirely on Kubernetes NetworkPolicy. The chart ships a default-deny policy covering both the dashboard and the MCP ports. Declare authorized sources via `networkPolicy.allowedSources` (dashboard) and `networkPolicy.mcpAllowedSources` (MCP); see the documented options and examples in [`manifests/kubeledger/helm/values.yaml`](manifests/kubeledger/helm/values.yaml). To disable the policy entirely and rely on cluster-level controls instead, set `networkPolicy.enabled=false`.
+
+### 2. Reach the MCP service from your workstation
+
+The Service is `ClusterIP` in v1 — external exposure (Route/Ingress) is out of scope. Use `kubectl port-forward` to reach it from your laptop:
+
+```bash
+kubectl port-forward svc/kubeledger 5484:5484 -n kubeledger
+```
+
+Smoke test in another shell:
+
+```bash
+curl -X POST http://localhost:5484/mcp \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+```
+
+Expected response: HTTP 200 with a JSON-RPC envelope listing the negotiated `protocolVersion` and server capabilities.
+
+### 3. Connect your MCP client
+
+Every MCP-aware client can be pointed at `http://localhost:5484/mcp` (Streamable HTTP transport). Only the configuration file differs. Two common configurations are detailed below; for other clients, consult their respective MCP integration docs and use the same URL.
+
+#### Claude Code (native HTTP)
+
+Create a `.mcp.json` at the root of the project where you'll work, or register globally via `claude mcp add`:
+
+```json
+{
+  "mcpServers": {
+    "kubeledger": {
+      "type": "http",
+      "url": "http://localhost:5484/mcp"
+    }
+  }
+}
+```
+
+Restart Claude Code; the `kubeledger` server appears connected with the 10 tools.
+
+#### Claude Desktop (via `mcp-remote` bridge)
+
+Claude Desktop currently spawns MCP servers as local subprocesses (stdio only). Use the [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridge to relay stdio to HTTP. Edit `claude_desktop_config.json` (at `%APPDATA%\Claude\` on Windows, `~/Library/Application Support/Claude/` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "kubeledger": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "http://localhost:5484/mcp",
+        "--transport",
+        "http-only"
+      ]
+    }
+  }
+}
+```
+
+Prerequisite: a working `node` + `npx` on the system `PATH`. After editing, **fully quit Claude Desktop** (system tray → Quit, not just close the window) and relaunch.
+
+#### Other MCP clients
+
+Most clients accept the same `http://localhost:5484/mcp` endpoint with their own configuration syntax. Examples:
+
+- **Gemini CLI** — declare the server in `~/.gemini/settings.json` under `mcpServers` (Google's [MCP integration docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/mcp.md)).
+- **Cursor / Windsurf / Cline** — add the server in the IDE's MCP settings, type `streamable-http`, URL `http://localhost:5484/mcp`.
+- **MCP Inspector** — `npx @modelcontextprotocol/inspector`, then connect to `http://localhost:5484/mcp` with transport `Streamable HTTP`.
+
+Clients that only speak stdio can use the [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridge, same pattern as the Claude Desktop example above.
+
+### Example questions to ask the AI
+
+The assistant picks the right tool automatically — ask in plain language:
+
+- *"Which ten namespaces consume the most CPU over the past 14 days, excluding system namespaces?"*
+- *"Compare the monthly CPU trajectory of `openshift-monitoring` against `kube-system`."*
+- *"Identify CPU over-provisioned namespaces — those with a `usage / requests` ratio below 0.5."*
+- *"Show the hourly memory series for the `registry` namespace over the last 7 days, with min/max/mean."*
+- *"What proportion of cluster CPU is consumed by `openshift-*` namespaces today?"*
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `connection refused` on port-forward | MCP container not enabled or pod not ready | `helm get values kubeledger` → confirm `mcp.enabled=true`; `kubectl get pods -n kubeledger` |
+| Client using `mcp-remote`: `spawn npx ENOENT` | Node.js not installed or not on PATH | Install Node.js LTS and restart the client |
+| Client using `mcp-remote`: `Server disconnected` shortly after connect | `mcp-remote` probing SSE which is no longer supported | Add `--transport http-only` to the args (see above) |
+| `403 Forbidden` or timeouts from inside the cluster | NetworkPolicy denying the source | Update `networkPolicy.mcpAllowedSources` with your client's selector |
+| All tools return empty data + warnings about missing files | Backend hasn't dumped aggregates yet (first 5–10 min after deploy) | Wait one `dump_analytics` cycle (`KL_POLLING_INTERVAL_SEC`, default 300 s) |
 
 
 ## Architecture
 
 ```
-┌───────────────────┐
-│  Metrics Server   │──┐
-│  (CPU/Memory)     │  │    ┌───────────────────────────────────────┐
-└───────────────────┘  ├───>│         KubeLedger                    │
-┌───────────────────┐  │    │  ┌─────────┐  ┌────────┐  ┌─────────┐ │
-│  DCGM Exporter    │──┘    │  │ Poller  │─>│RRD DBs │─>│ API     │ │
-│  (GPU metrics)    │       │  │ (5 min) │  │        │  │         │ │
-└───────────────────┘       │  └─────────┘  └────────┘  └────┬────┘ │
-                            └────────────────────────────────┼──────┘
-                                                             │
-                            ┌────────────────────────────────┼───────┐
-                            │                                v       │
-                            │  ┌────────────┐    ┌──────────────┐    │
-                            │  │  Web UI    │    │  /metrics    │    │
-                            │  │  (D3.js)   │    │ (Prometheus) │    │
-                            │  └────────────┘    └──────────────┘    │
-                            └────────────────────────────────────────┘
-                                     │                  │
-                                     v                  v
-                              Built-in Dashboards   Grafana/Alerting
+┌─────────────────┐                ┌─────────── KubeLedger Pod ─────────────────────────┐
+│ Metrics Server  │──┐             │  ┌─ container: backend ──────────────────────────┐ │
+│ (CPU / Memory)  │  │             │  │  Poller (5 min) ─> RRD DBs ─> Flask (UI/API)  │ │
+└─────────────────┘  │             │  │                       │                         │ │
+                     ├── poll ────>│  │                       └─> dump_analytics ──┐    │ │
+┌─────────────────┐  │             │  └──────────────────────────────────────────────│────┘ │
+│ DCGM Exporter   │──┘             │                                                 v      │
+│ (GPU metrics)   │                │            shared volume: static/data/*.json (RO from MCP)
+└─────────────────┘                │                                                 │      │
+                                   │  ┌─ container: mcp (opt-in via mcp.enabled) ────┘────┐ │
+                                   │  │  10 read-only tools over Streamable HTTP /mcp   │ │
+                                   │  └─────────────────────────────────────────────────┘ │
+                                   │                                                       │
+                                   │   K8s Service ─── port 80 (http) │ port 5484 (mcp)    │
+                                   └───────────────────┬───────────────┬───────────────────┘
+                                                       v               v
+                                              Web UI / Prometheus   MCP clients (Claude,
+                                                                    Gemini, Cursor, …)
+                                                                    via kubectl port-forward
 ```
 
 **Data Flow:**
-1. Metrics polled every 5 minutes (configurable):
-   - CPU/Memory from Kubernetes Metrics Server
+1. Metrics polled every 5 minutes (configurable via `KL_POLLING_INTERVAL_SEC`):
+   - CPU / Memory from Kubernetes Metrics Server
    - GPU from NVIDIA DCGM Exporter
 2. Metrics are processed and stored in internal lightweight time-series databases (round-robin DBs)
 3. Data is consolidated into hourly, daily, and monthly aggregates
-4. API serves data to the built-in web UI and Prometheus scraper
+4. `dump_analytics` periodically writes the aggregates as JSON files into a shared volume
+5. The Flask API serves the data to the built-in web UI and Prometheus scraper
+6. *(optional)* The MCP container reads the same JSON files **read-only** and exposes them as 10 MCP tools to AI assistants — see [MCP Integration](#mcp-integration-ai-assistant)
 
 ## Documentation
 
 | Topic | Link |
 |-------|------|
 | Installation on Kubernetes and OpenShift | https://kubeledger.io/docs/installation-on-kubernetes-and-openshift/ |
-| Installation on Docker | https://kubeledger.io/docs/installation-on-docker/ |
 | Built-in Dashboards and Charts of KubeLedger | https://kubeledger.io/docs/built-in-dashboards-and-charts/ |
 | Prometheus Exporter and Grafana dashboards | https://kubeledger.io/docs/prometheus-exporter-grafana-dashboard/ |
+| Enable the MCP Server (AI Assistants) | https://kubeledger.io/docs/enable-kubeledger-mcp/ |
 | KubeLedger Configuration Settings | https://kubeledger.io/docs/configuration-settings/ |
 | Design Fundamentals | https://kubeledger.io/docs/design-fundamentals/ |
 
