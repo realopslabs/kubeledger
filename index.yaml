@@ -3,11 +3,11 @@ entries:
   kubeledger:
   - apiVersion: v1
     appVersion: 26.05.0-b1
-    created: "2026-05-21T09:59:37.014460978Z"
+    created: "2026-05-21T12:11:04.818795296Z"
     description: Helm chart for KubeLedger
-    digest: b2b4e6749529cd98405c49abb30a968af80238c4f2269e737fd0522df56ae919
+    digest: 4995222e1db40a324bba73e60b5d23abcd0f224d853bebfdb2b85c0042ef7be9
     name: kubeledger
     urls:
     - https://realopslabs.github.io/kubeledger/kubeledger-26.05.0-b1.tgz
     version: 26.05.0-b1
-generated: "2026-05-21T09:59:37.013956937Z"
+generated: "2026-05-21T12:11:04.818194856Z"
