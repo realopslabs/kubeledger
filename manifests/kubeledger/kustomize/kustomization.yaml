@@ -14,4 +14,4 @@ resources:
 images:
   - name: kubeledger
     newName: ghcr.io/realopslabs/kubeledger
-    newTag: 26.05.0-b1
+    newTag: 26.01.1
