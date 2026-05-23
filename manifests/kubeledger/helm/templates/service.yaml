@@ -12,6 +12,12 @@ spec:
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
       name: http
+    {{- if .Values.mcp.enabled }}
+    - port: {{ .Values.mcp.service.port }}
+      targetPort: {{ .Values.mcp.service.targetPort }}
+      protocol: TCP
+      name: mcp
+    {{- end }}
   selector:
     app.kubernetes.io/name: {{ include "kubeledger.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}

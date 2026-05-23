@@ -11,7 +11,7 @@ __status__ = "Production"
 import backend
 
 
-class TestDecodeK8sMetrics(object):
+class TestDecodeK8sMetrics:
     def test_decode_cpu_capacity_nounit(self):
         assert round(backend.K8sUsage().decode_capacity("1"), 0) == 1
         assert round(backend.K8sUsage().decode_capacity("64"), 0) == 64
