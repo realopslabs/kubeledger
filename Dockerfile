@@ -25,7 +25,6 @@ COPY css $APP_HOME/css
 COPY js $APP_HOME/js
 COPY static/images $APP_HOME/static/images
 COPY backend.py \
-    mcp_server.py \
     index.html \
     LICENSE \
     NOTICE \

@@ -82,42 +82,6 @@ spec:
               name: data-vol
             - mountPath: /koa/static/data/
               name: static-data-vol
-        {{- if .Values.mcp.enabled }}
-        - name: mcp
-          image: "{{ .Values.image.repository }}:{{ include "kubeledger.imageVersion" . }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python3", "-u", "./mcp_server.py"]
-          env:
-            # The MCP server reads JSON files written by the backend container.
-            # Default ./static/data resolves to /koa/static/data (image WORKDIR),
-            # which matches the shared static-data-vol mount path below.
-            - name: KL_MCP_DATA_DIR
-              value: /koa/static/data
-          ports:
-            - name: mcp
-              containerPort: {{ .Values.mcp.service.targetPort }}
-              protocol: TCP
-          # TCP socket probes — protocol-agnostic baseline. HTTP/SSE endpoints
-          # may evolve; a TCP probe simply asserts the asyncio server is bound.
-          livenessProbe:
-            tcpSocket:
-              port: mcp
-            initialDelaySeconds: 10
-            periodSeconds: 30
-          readinessProbe:
-            tcpSocket:
-              port: mcp
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          resources:
-            {{- toYaml .Values.mcp.resources | nindent 12 }}
-          volumeMounts:
-            # Strictly read-only: the MCP server must not be able to mutate
-            # the data dumped by backend.py. See spec §3.1/§3.2.
-            - mountPath: /koa/static/data/
-              name: static-data-vol
-              readOnly: true
-        {{- end }}
       volumes:
       - name: static-data-vol
         emptyDir: {}

@@ -21,7 +21,7 @@ import threading
 import time
 import traceback
 import urllib
-from typing import Any
+from typing import Any, List
 
 import flask
 
@@ -53,11 +53,11 @@ def create_directory_if_not_exists(path):
 
 def get_backend_config_env(var_name, default_value=None):
     """Retrieve environment variable, prioritizing KL_ prefix over KOA_ using explicit check."""
-    kl_var = f"KL_{var_name}"
+    kl_var = "KL_{}".format(var_name)
     if kl_var in os.environ:
         return os.environ[kl_var]
 
-    koa_var = f"KOA_{var_name}"
+    koa_var = "KOA_{}".format(var_name)
     if koa_var in os.environ:
         return os.environ[koa_var]
 
@@ -65,15 +65,15 @@ def get_backend_config_env(var_name, default_value=None):
 
 
 class Config:
-    version = "26.05.0-b1"
+    version = "26.01.1"
     db_round_decimals = 6
     db_non_allocatable = "non-allocatable"
     db_billing_hourly_rate = ".billing-hourly-rate"
     static_content_location = "/static"
-    frontend_data_location = f".{static_content_location}/data"
+    frontend_data_location = ".%s/data" % (static_content_location)
     k8s_api_endpoint = get_backend_config_env("K8S_API_ENDPOINT", "http://127.0.0.1:8001")
     k8s_verify_ssl = (lambda v: v.lower() in ("yes", "true"))(get_backend_config_env("K8S_API_VERIFY_SSL", "true"))
-    db_location = get_backend_config_env("DB_LOCATION", ("{}/.kubeledger/db").format(os.getenv("HOME", "/tmp")))
+    db_location = get_backend_config_env("DB_LOCATION", ("%s/.kubeledger/db") % os.getenv("HOME", "/tmp"))
     polling_interval_sec = int(get_backend_config_env("POLLING_INTERVAL_SEC", "300"))
     cost_model = get_backend_config_env("COST_MODEL", "CUMULATIVE_RATIO")
     billing_currency = get_backend_config_env("BILLING_CURRENCY_SYMBOL", "$")
@@ -121,9 +121,8 @@ class Config:
         self.process_cost_model_config()
         create_directory_if_not_exists(self.frontend_data_location)
         cost_model_label, cost_model_unit = self.process_cost_model_config()
-        backend_config = {"cost_model": cost_model_label, "currency": cost_model_unit}
-        with open(f"{self.frontend_data_location}/backend.json", "w") as fd:
-            json.dump(backend_config, fd)
+        with open(str("%s/backend.json" % self.frontend_data_location), "w") as fd:
+            fd.write('{"cost_model":"%s", "currency":"%s"}' % (cost_model_label, cost_model_unit))
 
         # check listener port
         try:
@@ -155,7 +154,7 @@ class Config:
     def load_rbac_auth_token(self):
         """Load the service account token when applicable."""
         try:
-            with open(KOA_CONFIG.k8s_auth_token_file, encoding=None) as rbac_token_file:
+            with open(KOA_CONFIG.k8s_auth_token_file, "r", encoding=None) as rbac_token_file:
                 self.k8s_rbac_auth_token = rbac_token_file.read()
         except Exception:
             self.k8s_rbac_auth_token = "NO_ENV_TOKEN_FILE"
@@ -166,7 +165,7 @@ class Config:
 
     @staticmethod
     def usage_efficiency_db(ns):
-        return f"{ns}{Config.request_efficiency_db_file_extension()}"
+        return "%s%s" % (ns, Config.request_efficiency_db_file_extension())
 
     @staticmethod
     def gpu_db_file_extension():
@@ -174,7 +173,7 @@ class Config:
 
     @staticmethod
     def gpu_metrics_db(ns):
-        return f"{ns}{Config.gpu_db_file_extension()}"
+        return "%s%s" % (ns, Config.gpu_db_file_extension())
 
 
 def configure_logger(debug_enabled):
@@ -301,7 +300,7 @@ def get_node_heatmap_data():
         if not os.path.exists(nodes_file):
             return flask.jsonify({"error": "Nodes data not available", "nodes": []})
 
-        with open(nodes_file) as f:
+        with open(nodes_file, "r") as f:
             nodes_data = json.load(f)
 
         heatmap_data = []
@@ -654,7 +653,7 @@ class K8sUsage:
 
             pod = Pod()
             pod.namespace = item["metadata"]["namespace"]
-            pod.name = "{}.{}".format(item["metadata"]["name"], pod.namespace)
+            pod.name = "%s.%s" % (item["metadata"]["name"], pod.namespace)
             pod.id = item["metadata"]["uid"]
             pod.phase = item["status"]["phase"]
             if "conditions" not in item["status"]:
@@ -707,7 +706,7 @@ class K8sUsage:
         for _, item in enumerate(data_json["items"]):
             if not KOA_CONFIG.allow_namespace(item["metadata"]["namespace"]):
                 continue
-            pod_name = "{}.{}".format(
+            pod_name = "%s.%s" % (
                 item["metadata"]["name"],
                 item["metadata"]["namespace"],
             )
@@ -772,7 +771,7 @@ class K8sUsage:
                     continue
 
                 # Create unique pod key (same format as pods dictionary)
-                pod_key = f"{pod}.{namespace}"
+                pod_key = "%s.%s" % (pod, namespace)
 
                 # Get or create GpuMetrics instance for this pod
                 if pod_key not in self.gpuMetricsByPod:
@@ -809,7 +808,7 @@ class K8sUsage:
         if not self.gpuMetricsByPod:
             return
 
-        with open(str(f"{KOA_CONFIG.frontend_data_location}/gpu_metrics.json"), "w") as fd:
+        with open(str("%s/gpu_metrics.json" % KOA_CONFIG.frontend_data_location), "w") as fd:
             fd.write(json.dumps(self.gpuMetricsByPod, cls=JSONMarshaller))
 
     def consolidate_ns_usage(self):
@@ -900,7 +899,7 @@ class K8sUsage:
                 node.gpuUsage = round(node.gpuUsage / node.gpuCount, 2)
 
     def dump_nodes(self):
-        with open(str(f"{KOA_CONFIG.frontend_data_location}/nodes.json"), "w") as fd:
+        with open(str("%s/nodes.json" % KOA_CONFIG.frontend_data_location), "w") as fd:
             fd.write(json.dumps(self.nodes, cls=JSONMarshaller))
 
 
@@ -917,7 +916,7 @@ class Rrd:
     def __init__(self, db_files_location=None, dbname=None):
         create_directory_if_not_exists(db_files_location)
         self.dbname = dbname
-        self.rrd_location = str(f"{KOA_CONFIG.db_location}/{dbname}")
+        self.rrd_location = str("%s/%s" % (KOA_CONFIG.db_location, dbname))
         self.create_rrd_file_if_not_exists()
 
     def get_creation_time_epoch(self):
@@ -938,8 +937,8 @@ class Rrd:
                 str(KOA_CONFIG.polling_interval_sec),
                 "--start",
                 "0",
-                f"DS:cpu_usage:GAUGE:{xfs}:U:U",
-                f"DS:mem_usage:GAUGE:{xfs}:U:U",
+                str("DS:cpu_usage:GAUGE:%d:U:U" % xfs),
+                str("DS:mem_usage:GAUGE:%d:U:U" % xfs),
                 "RRA:AVERAGE:0.5:1:4032",
                 "RRA:AVERAGE:0.5:12:8880",
             )
@@ -947,11 +946,14 @@ class Rrd:
     def add_sample(self, timestamp_epoch, cpu_usage, mem_usage):
         KOA_LOGGER.debug("[puller][sample] %s, %f, %f", self.dbname, cpu_usage, mem_usage)
         try:
-            cpu_rounded = round(cpu_usage, KOA_CONFIG.db_round_decimals)
-            mem_rounded = round(mem_usage, KOA_CONFIG.db_round_decimals)
             rrdtool.update(
                 self.rrd_location,
-                f"{timestamp_epoch}:{cpu_rounded}:{mem_rounded}",
+                "%s:%s:%s"
+                % (
+                    timestamp_epoch,
+                    round(cpu_usage, KOA_CONFIG.db_round_decimals),
+                    round(mem_usage, KOA_CONFIG.db_round_decimals),
+                ),
             )
         except rrdtool.OperationalError:
             KOA_LOGGER.error("failing adding rrd sample => %s", traceback.format_exc())
@@ -985,10 +987,10 @@ class Rrd:
                     current_mem_usage = round(100 * float(cdp[1]), KOA_CONFIG.db_round_decimals) / 100
                     datetime_utc_json = time.strftime("%Y-%m-%dT%H:%M:%SZ", rrd_cdp_gmtime)
                     res_usage[ResUsageType.CPU].append(
-                        f'{{"name":"{self.dbname}","dateUTC":"{datetime_utc_json}","usage":{current_cpu_usage:f}}}'
+                        '{"name":"%s","dateUTC":"%s","usage":%f}' % (self.dbname, datetime_utc_json, current_cpu_usage)
                     )
                     res_usage[ResUsageType.MEMORY].append(
-                        f'{{"name":"{self.dbname}","dateUTC":"{datetime_utc_json}","usage":{current_mem_usage:f}}}'
+                        '{"name":"%s","dateUTC":"%s","usage":%f}' % (self.dbname, datetime_utc_json, current_mem_usage)
                     )
                     sum_res_usage[ResUsageType.CPU] += current_cpu_usage
                     sum_res_usage[ResUsageType.MEMORY] += current_mem_usage
@@ -1074,10 +1076,12 @@ class Rrd:
                     res_usage[res].append(current_trend_data[res])
 
         mem_label = "mem" if prefix else "memory"
-        with open(str(f"{KOA_CONFIG.frontend_data_location}/{prefix}cpu_{category}_trends.json"), "w") as fd:
+        with open(str("%s/%scpu_%s_trends.json" % (KOA_CONFIG.frontend_data_location, prefix, category)), "w") as fd:
             fd.write("[" + ",".join(res_usage[0]) + "]")
 
-        with open(str(f"{KOA_CONFIG.frontend_data_location}/{prefix}{mem_label}_{category}_trends.json"), "w") as fd:
+        with open(
+            str("%s/%s%s_%s_trends.json" % (KOA_CONFIG.frontend_data_location, prefix, mem_label, category)), "w"
+        ) as fd:
             fd.write("[" + ",".join(res_usage[1]) + "]")
 
     @staticmethod
@@ -1150,7 +1154,7 @@ class Rrd:
                                     KOA_CONFIG.db_round_decimals,
                                 )
 
-                        usage_export[res].append(f'{{"stack":"{db}","usage":{usage_cost:f},"date":"{date_key}"}}')
+                        usage_export[res].append('{"stack":"%s","usage":%f,"date":"%s"}' % (db, usage_cost, date_key))
                         if Rrd.get_date_group(now_gmtime, period) == date_key:
                             PROMETHEUS_PERIODIC_USAGE_EXPORTERS[period].labels(db, ResUsageType(res).name).set(
                                 usage_cost
@@ -1168,41 +1172,79 @@ class Rrd:
                                     KOA_CONFIG.db_round_decimals,
                                 )
 
-                        requests_export[res].append(f'{{"stack":"{db}","usage":{req_cost:f},"date":"{date_key}"}}')
+                        requests_export[res].append('{"stack":"%s","usage":%f,"date":"%s"}' % (db, req_cost, date_key))
                         if Rrd.get_date_group(now_gmtime, period) == date_key:
                             PROMETHEUS_PERIODIC_REQUESTS_EXPORTERS[period].labels(db, ResUsageType(res).name).set(
                                 req_cost
                             )  # noqa: E501
 
         mem_label = "mem" if prefix else "memory"
-        data_dir = KOA_CONFIG.frontend_data_location
-        with open(f"{data_dir}/{prefix}cpu_usage_period_{period}.json", "w") as fd:
+        with open(
+            str(
+                "%s/%scpu_usage_period_%d.json"
+                % (
+                    KOA_CONFIG.frontend_data_location,
+                    prefix,
+                    period,
+                )
+            ),
+            "w",
+        ) as fd:
             fd.write("[" + ",".join(usage_export[0]) + "]")
-        with open(f"{data_dir}/{prefix}{mem_label}_usage_period_{period}.json", "w") as fd:
+        with open(
+            str(
+                "%s/%s%s_usage_period_%d.json"
+                % (
+                    KOA_CONFIG.frontend_data_location,
+                    prefix,
+                    mem_label,
+                    period,
+                )
+            ),
+            "w",
+        ) as fd:
             fd.write("[" + ",".join(usage_export[1]) + "]")
-        with open(f"{data_dir}/{prefix}cpu_requests_period_{period}.json", "w") as fd:
+        with open(
+            str(
+                "%s/%scpu_requests_period_%d.json"
+                % (
+                    KOA_CONFIG.frontend_data_location,
+                    prefix,
+                    period,
+                )
+            ),
+            "w",
+        ) as fd:
             fd.write("[" + ",".join(requests_export[0]) + "]")
-        with open(f"{data_dir}/{prefix}{mem_label}_requests_period_{period}.json", "w") as fd:
+        with open(
+            str(
+                "%s/%s%s_requests_period_%d.json" % (KOA_CONFIG.frontend_data_location, prefix, mem_label, period),
+            ),
+            "w",
+        ) as fd:
             fd.write("[" + ",".join(requests_export[1]) + "]")
 
 
 def pull_k8s(api_context):
     data = None
-    api_endpoint = f"{KOA_CONFIG.k8s_api_endpoint}{api_context}"
+    api_endpoint = "%s%s" % (KOA_CONFIG.k8s_api_endpoint, api_context)
     headers = {}
     client_cert = None
     endpoint_info = urllib.parse.urlparse(KOA_CONFIG.k8s_api_endpoint)
     if KOA_CONFIG.enable_debug or (endpoint_info.hostname != "127.0.0.1" and endpoint_info.hostname != "localhost"):
         if KOA_CONFIG.k8s_auth_token != "NO_ENV_AUTH_TOKEN":
-            headers["Authorization"] = f"{KOA_CONFIG.k8s_auth_token_type} {KOA_CONFIG.k8s_auth_token}"
+            headers["Authorization"] = "%s %s" % (
+                KOA_CONFIG.k8s_auth_token_type,
+                KOA_CONFIG.k8s_auth_token,
+            )
         elif KOA_CONFIG.k8s_rbac_auth_token != "NO_ENV_TOKEN_FILE":
-            headers["Authorization"] = f"Bearer {KOA_CONFIG.k8s_rbac_auth_token}"
+            headers["Authorization"] = "Bearer %s" % KOA_CONFIG.k8s_rbac_auth_token
         elif (
             KOA_CONFIG.k8s_auth_username != "NO_ENV_AUTH_USERNAME"
             and KOA_CONFIG.k8s_auth_password != "NO_ENV_AUTH_PASSWORD"
         ):
-            token = base64.b64encode(f"{KOA_CONFIG.k8s_auth_username}:{KOA_CONFIG.k8s_auth_password}")
-            headers["Authorization"] = f"Basic {token}"
+            token = base64.b64encode("%s:%s" % (KOA_CONFIG.k8s_auth_username, KOA_CONFIG.k8s_auth_password))
+            headers["Authorization"] = "Basic %s" % token
         elif os.path.isfile(KOA_CONFIG.k8s_ssl_client_cert) and os.path.isfile(KOA_CONFIG.k8s_ssl_client_cert_key):
             client_cert = (KOA_CONFIG.k8s_ssl_client_cert, KOA_CONFIG.k8s_ssl_client_cert_key)
 
@@ -1426,7 +1468,7 @@ def dump_analytics(cost_model_by_user=None):
     try:
         export_interval = round(1.5 * KOA_CONFIG.polling_interval_sec)
         while True:
-            dbfiles: list[Any] = []
+            dbfiles: List[Any] = []
             for _, _, filenames in os.walk(KOA_CONFIG.db_location):
                 dbfiles.extend(filenames)
                 break
@@ -1493,7 +1535,7 @@ if __name__ == "__main__":
         "-v",
         "--version",
         action="version",
-        version=f"%(prog)s {KOA_CONFIG.version}",
+        version="%(prog)s {}".format(KOA_CONFIG.version),
     )
     args = parser.parse_args()
     th_puller = threading.Thread(target=create_metrics_puller)
@@ -1502,6 +1544,6 @@ if __name__ == "__main__":
     th_exporter.start()
 
     if not KOA_CONFIG.enable_debug:
-        waitress_serve(wsgi_dispatcher, listen=f"0.0.0.0:{KOA_CONFIG.listener_port}")
+        waitress_serve(wsgi_dispatcher, listen="0.0.0.0:{}".format(KOA_CONFIG.listener_port))
     else:
         app.run(host="0.0.0.0", port=KOA_CONFIG.listener_port)
