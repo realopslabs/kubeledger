@@ -1997,19 +1997,12 @@ def _build_mcp_app() -> Any:
     keeps the unit tests (which never call main()) light.
     """
     from mcp.server.fastmcp import FastMCP
-    from mcp.types import ToolAnnotations
 
     host = _get_env("MCP_LISTEN_HOST", "0.0.0.0") or "0.0.0.0"
     try:
         port = int(_get_env("MCP_LISTEN_PORT", "5484") or "5484")
     except (TypeError, ValueError):
         port = 5484
-
-    read_only_tool_annotations = ToolAnnotations(
-        readOnlyHint=True,
-        destructiveHint=False,
-        openWorldHint=False,
-    )
 
     app = FastMCP(
         name="kubeledger-mcp",
@@ -2037,17 +2030,17 @@ def _build_mcp_app() -> Any:
     #   - Return ``Dict[str, Any]`` — FastMCP serialises and (when the SDK
     #     supports it) puts the result under ``structuredContent``.
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def list_namespaces() -> dict[str, Any]:
         """List available namespaces (application / system) and the known special entries."""
         return tool_list_namespaces()
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def describe_dataset() -> dict[str, Any]:
         """Announce dataset capabilities: metrics, GPU availability, scales, efficiency, cost_model."""
         return tool_describe_dataset()
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def get_usage(
         metric: Literal["cpu", "memory"],
         scale: Literal["daily_14d", "monthly_12m"],
@@ -2062,7 +2055,7 @@ def _build_mcp_app() -> Any:
             exclude_special=exclude_special,
         )
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def get_top_consumers(
         metric: Literal["cpu", "memory"],
         scale: Literal["daily_14d", "monthly_12m"],
@@ -2079,7 +2072,7 @@ def _build_mcp_app() -> Any:
             date=date,
         )
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def get_namespace_breakdown(
         metric: Literal["cpu", "memory"],
         scale: Literal["daily_14d", "monthly_12m"],
@@ -2094,7 +2087,7 @@ def _build_mcp_app() -> Any:
             exclude_system=exclude_system,
         )
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def get_efficiency(
         scale: Literal["daily_14d", "monthly_12m"],
         namespace: str | None = None,
@@ -2103,7 +2096,7 @@ def _build_mcp_app() -> Any:
         """Return usage/requests ratio per (namespace, metric) — descriptive classification."""
         return tool_get_efficiency(scale=scale, namespace=namespace, metric=metric)
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def get_timeseries(
         metric: Literal["cpu", "memory"],
         namespace: str,
@@ -2111,7 +2104,7 @@ def _build_mcp_app() -> Any:
         """Hourly usage series over the trends window for a single namespace, with min/max/mean."""
         return tool_get_timeseries(metric=metric, namespace=namespace)
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def compare_periods(
         metric: Literal["cpu", "memory"],
         namespace: str,
@@ -2119,7 +2112,7 @@ def _build_mcp_app() -> Any:
         """Compare 14-day aggregate against monthly trajectory; descriptive trend direction."""
         return tool_compare_periods(metric=metric, namespace=namespace)
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def get_efficiency_timeseries(
         metric: Literal["cpu", "memory"],
         namespace: str,
@@ -2127,7 +2120,7 @@ def _build_mcp_app() -> Any:
         """Hourly efficiency factor (rf = usage/requests) series — not bounded at 1."""
         return tool_get_efficiency_timeseries(metric=metric, namespace=namespace)
 
-    @app.tool(annotations=read_only_tool_annotations)
+    @app.tool()
     def group_namespaces(
         metric: Literal["cpu", "memory"],
         scale: Literal["daily_14d", "monthly_12m"],
