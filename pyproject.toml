@@ -1,6 +1,6 @@
 [project]
 name = "kubeledger"
-version = "26.05.0-b1"
+version = "26.05.1"
 description = "Open source Kubernetes resource usage tracking, accounting and optimization — CPU, memory, and GPU usage"
 readme = "README.md"
 requires-python = ">=3.12"
