@@ -1,6 +1,6 @@
 # Release Notes
 
-## v26.05.1
+## v26.05.0
 
 ### Highlights
 

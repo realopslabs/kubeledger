@@ -18,7 +18,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
-- [MCP Integration (AI Assistant) / Requires v26.05.1+](#mcp-integration-ai-assistant--requires-v26051)
+- [MCP Integration (AI Assistant) / Requires v26.05.0+](#mcp-integration-ai-assistant--requires-v26051)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
 - [Configuration](#configuration)
@@ -160,7 +160,7 @@ kubectl port-forward svc/kubeledger 5483:80 -n kubeledger
 # Open http://localhost:5483 in your browser
 ```
 
-## MCP Integration (AI Assistant) / Requires v26.05.1+
+## MCP Integration (AI Assistant) / Requires v26.05.0+
 
 KubeLedger ships with an **optional MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server** that gives MCP-aware AI tools **direct access to the underlying analytics data**: the consolidated CPU, memory and GPU usage that the web UI is built on. MCP is an open standard adopted by a growing ecosystem: Anthropic's Claude Desktop and Claude Code, Google's Gemini CLI, IDE assistants such as Cursor, Windsurf and Cline, the MCP Inspector developer tool, and others.
 
