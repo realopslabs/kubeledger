@@ -4,14 +4,14 @@
 
 ### Highlights
 
-This is the first release of the **26.05.x line**, headlined by the introduction of the **KubeLedger MCP server** — a read-only [Model Context Protocol](https://modelcontextprotocol.io) surface that opens KubeLedger's analytics to AI assistants (Claude Desktop, Claude Code, Google Gemini CLI, Cursor, Windsurf, MCP Inspector, and the broader MCP-aware ecosystem). The release also consolidates the security fixes from v26.01.1, refreshes dependencies and CI tooling, and polishes the backend, the rebrand, and the developer experience.
+This is the first release of the **26.05.x line**, headlined by the introduction of the **KubeLedger MCP server**: a read-only [Model Context Protocol](https://modelcontextprotocol.io) surface that opens KubeLedger's analytics to AI assistants (Claude Desktop, Claude Code, Google Gemini CLI, Cursor, Windsurf, MCP Inspector, and the broader MCP-aware ecosystem). The release also consolidates the security fixes from v26.01.1, refreshes dependencies and CI tooling, and polishes the backend, the rebrand, and the developer experience.
 
 ### New features
 
 #### MCP server (optional, opt-in)
 
-- **New `mcp_server.py` module** shipped in the container image. Ten read-only tools expose every namespace, scale, efficiency factor and trend as a queryable surface for AI assistants — see [`kubeledger-mcp-spec.md`](./kubeledger-mcp-spec.md) and the [Enable the MCP Server guide](https://kubeledger.io/docs/enable-kubeledger-mcp/).
-- **Streamable HTTP transport** at the single endpoint `/mcp` (port `5484` by default — adjacent to the backend's `5483`). SSE and stdio are intentionally out of scope for v1.
+- **New `mcp_server.py` module** shipped in the container image. Ten read-only tools expose every namespace, scale, efficiency factor and trend as a queryable surface for AI assistants. See [`kubeledger-mcp-spec.md`](./kubeledger-mcp-spec.md) and the [Enable the MCP Server guide](https://kubeledger.io/docs/enable-kubeledger-mcp/).
+- **Streamable HTTP transport** at the single endpoint `/mcp` (port `5484` by default, adjacent to the backend's `5483`). SSE and stdio are intentionally out of scope for v1.
 - **Read-only protocol annotations** on every tool (`ToolAnnotations.readOnlyHint=true`) so MCP clients can skip confirmation prompts and surface accurate UI hints.
 - **Helm chart**: a second container `mcp` is toggled by `mcp.enabled=true` (disabled by default), reusing the same image. The Service grows a named port `mcp` conditionally; both ports are protected by a new **default-on `NetworkPolicy` (deny-by-default)** which is the v1 access-control mechanism (no auth at the tool layer).
 - **MCP SDK pinned** to `mcp>=1.27.1` for stable `structuredContent` + `outputSchema` support.
@@ -19,7 +19,7 @@ This is the first release of the **26.05.x line**, headlined by the introduction
 
 ### Security fixes
 
-Inherits the urllib3, werkzeug, waitress and flask-cors CVE fixes from **v26.01.1** — see the v26.01.1 entry below for the complete list (issues #6 through #17).
+Inherits the urllib3, werkzeug, waitress and flask-cors CVE fixes from **v26.01.1**. See the v26.01.1 entry below for the complete list (issues #6 through #17).
 
 ### Bug fixes
 
@@ -66,8 +66,8 @@ Inherits the urllib3, werkzeug, waitress and flask-cors CVE fixes from **v26.01.
 
 ### Out of scope for this release
 
-- External exposure of the MCP server (OpenShift Route / Ingress) and token authentication — the MCP stays `ClusterIP` in v1.
-- LLM calls, predictions, or prescriptive recommendations — the MCP server remains purely descriptive.
+- External exposure of the MCP server (OpenShift Route / Ingress) and token authentication: the MCP stays `ClusterIP` in v1.
+- LLM calls, predictions, or prescriptive recommendations: the MCP server remains purely descriptive.
 
 ## v26.01.1
 

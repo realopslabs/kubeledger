@@ -45,7 +45,7 @@ class TestGetDataDir:
 
 
 # ---------------------------------------------------------------------------
-# read_json_file — robust JSON parsing
+# read_json_file: robust JSON parsing
 # ---------------------------------------------------------------------------
 
 
@@ -176,7 +176,7 @@ class TestHistogramFilename:
         )
 
     def test_gpu_cpu_usage_uses_mem_label_for_memory(self):
-        # GPU variant uses "mem" instead of "memory" — matches backend.py
+        # GPU variant uses "mem" instead of "memory": matches backend.py
         assert (
             mcp_server.histogram_filename("memory", "usage", mcp_server.PERIOD_14_DAYS_SEC, gpu=True)
             == "gpu_mem_usage_period_1209600.json"
@@ -414,7 +414,7 @@ class TestDiscoverDataset:
 
     def test_truncated_histogram_does_not_crash_discovery(self, tmp_path):
         _write(tmp_path, "backend.json", {"cost_model": "cumulative", "currency": "%"})
-        # Truncated mid-file — simulates a crash during dump.
+        # Truncated mid-file: simulates a crash during dump.
         (tmp_path / "cpu_usage_period_1209600.json").write_text(
             '[{"stack":"a","usage":1.0,"date":"01 Feb"},{"stack":"b","usage":',
             encoding="utf-8",
@@ -436,7 +436,7 @@ class TestDiscoverDataset:
 
         info = mcp_server.discover_dataset(data_dir=tmp_path)
         assert info.data_freshness_utc is not None
-        # Re-derive expected ISO from data file mtime — must equal info value.
+        # Re-derive expected ISO from data file mtime: must equal info value.
         expected = mcp_server._iso_utc(data_mtime)
         assert info.data_freshness_utc == expected
 
@@ -466,7 +466,7 @@ class TestClassifyNamespace:
         assert mcp_server.classify_namespace(".billing-hourly-rate") == "special"
 
     def test_other_dot_prefixed_is_application(self):
-        # Only the known special entries are special — random dot-prefixed
+        # Only the known special entries are special: random dot-prefixed
         # names are still classified by the standard rules (application here).
         assert mcp_server.classify_namespace(".unknown-special") == "application"
 
@@ -510,7 +510,7 @@ class TestToolListNamespaces:
         assert "kube-system" in names_by_type.get("system", [])
         assert "registry" in names_by_type.get("application", [])
         assert "clusters-hcp1" in names_by_type.get("application", [])
-        # non-allocatable must NOT appear in the namespaces list — it is a
+        # non-allocatable must NOT appear in the namespaces list: it is a
         # special entry, surfaced separately.
         all_names = [n["name"] for n in result["namespaces"]]
         assert "non-allocatable" not in all_names
@@ -557,7 +557,7 @@ class TestToolListNamespaces:
         assert result["namespaces"] == []
         assert result["counts"]["application"] == 0
         assert result["counts"]["system"] == 0
-        # Special entries are static — present even without data.
+        # Special entries are static: present even without data.
         assert result["counts"]["special"] == 2
 
     def test_namespaces_sorted_alphabetically(self, tmp_path):
@@ -645,7 +645,7 @@ class TestToolDescribeDataset:
 
 
 # ---------------------------------------------------------------------------
-# build_metadata — freshness warning, optional fields
+# build_metadata: freshness warning, optional fields
 # ---------------------------------------------------------------------------
 
 
@@ -867,7 +867,7 @@ class TestToolGetTopConsumers:
         names = {r["namespace"] for r in result["ranking"]}
         assert "openshift-monitoring" in names
         assert "kube-system" in names
-        # non-allocatable still excluded — rule is invariant
+        # non-allocatable still excluded: rule is invariant
         assert "non-allocatable" not in names
 
     def test_uses_last_date_by_default(self, tmp_path):
@@ -1245,7 +1245,7 @@ class TestToolGetEfficiency:
     def test_metadata_unit_is_efficiency_ratio(self, tmp_path):
         _setup_efficiency_fixture(tmp_path)
         result = mcp_server.tool_get_efficiency(scale="daily_14d", data_dir=tmp_path)
-        # Headline number in the body is the ratio — metadata.unit must
+        # Headline number in the body is the ratio: metadata.unit must
         # reflect that (not the cost_model unit), per spec §4.3/§4.6 spirit.
         assert result["metadata"]["unit"] == "efficiency_ratio"
         # cost_model and currency are still present for context.
@@ -1331,7 +1331,7 @@ class TestClassifyEfficiency:
 
 
 # ---------------------------------------------------------------------------
-# Trends tools — fixtures
+# Trends tools: fixtures
 # ---------------------------------------------------------------------------
 
 
@@ -1453,7 +1453,7 @@ class TestToolGetTimeseries:
 class TestToolGetEfficiencyTimeseries:
     def test_reads_rf_trends_file(self, tmp_path):
         _write(tmp_path, "backend.json", {"cost_model": "cumulative", "currency": "%"})
-        # Same shape as usage trends — value field is "usage" but semantic
+        # Same shape as usage trends: value field is "usage" but semantic
         # is efficiency ratio (spec §2.2)
         rf_entries = [
             {"name": "registry", "dateUTC": "2026-02-10T11:00:00Z", "usage": 0.3},
@@ -1673,10 +1673,10 @@ def _setup_group_fixture(tmp_path):
         tmp_path,
         "cpu_usage_period_1209600.json",
         [
-            # 01 Feb — sparse, for "default date = last" test
+            # 01 Feb: sparse, for "default date = last" test
             {"stack": "openshift-monitoring", "usage": 30.0, "date": "01 Feb"},
             {"stack": "registry", "usage": 10.0, "date": "01 Feb"},
-            # 02 Feb — full fixture
+            # 02 Feb: full fixture
             {"stack": "openshift-monitoring", "usage": 40.0, "date": "02 Feb"},
             {"stack": "openshift-nmstate", "usage": 10.0, "date": "02 Feb"},
             {"stack": "openshift-dns", "usage": 5.0, "date": "02 Feb"},
@@ -1843,7 +1843,7 @@ class TestToolGroupNamespaces:
 #
 # These tests are skipped when the ``mcp`` SDK is not installed (e.g. on a
 # Windows dev machine where the project's rrdtool dep prevents ``uv sync``).
-# They cover only the wiring layer — the tool_* logic is tested above.
+# They cover only the wiring layer: the tool_* logic is tested above.
 # ---------------------------------------------------------------------------
 
 try:
@@ -1873,7 +1873,7 @@ class TestMcpWiring:
             "group_namespaces",
         }
         assert registered == expected
-        # FastMCP exposes a list_tools method (or a tools manager) — just
+        # FastMCP exposes a list_tools method (or a tools manager): just
         # assert the app instance is built and named correctly.
         assert app is not None
         assert getattr(app, "name", None) in ("kubeledger-mcp", None) or hasattr(app, "name")
@@ -1888,7 +1888,7 @@ class TestMcpWiring:
     def test_detect_structured_content_reports_a_decision(self):
         supported, reason = mcp_server.detect_structured_content_support()
         # Whatever the decision is, the function must return a non-empty
-        # reason string — spec §4.7 requires that the developer be informed.
+        # reason string: spec §4.7 requires that the developer be informed.
         assert isinstance(supported, bool)
         assert isinstance(reason, str) and reason
 
@@ -1897,7 +1897,7 @@ class TestMcpWiringStubsWithoutSDK:
     """Verify the module is importable without the mcp SDK."""
 
     def test_module_imports_without_sdk(self):
-        # mcp_server is already imported at top of file — re-import via a
+        # mcp_server is already imported at top of file: re-import via a
         # fresh sys.path manipulation would be heavy; just verify the
         # public surface still exists.
         assert callable(mcp_server.tool_list_namespaces)
@@ -1913,7 +1913,7 @@ class TestMcpWiringStubsWithoutSDK:
 
     def test_detect_structured_content_handles_missing_sdk_gracefully(self):
         # Even when the SDK is missing, the detector must return cleanly
-        # rather than raise — wiring code at startup depends on that.
+        # rather than raise: wiring code at startup depends on that.
         result = mcp_server.detect_structured_content_support()
         assert len(result) == 2
         assert isinstance(result[0], bool)
@@ -1921,7 +1921,7 @@ class TestMcpWiringStubsWithoutSDK:
 
 
 # ---------------------------------------------------------------------------
-# Metadata audit (§7.2 step 9) — every tool's response must carry a metadata
+# Metadata audit (§7.2 step 9): every tool's response must carry a metadata
 # block whose shape matches spec §4.6.
 #
 # These tests deliberately ignore the *content* of metadata (already covered
@@ -1949,7 +1949,7 @@ METADATA_REQUIRED_KEYS = frozenset(
 
 
 def _assert_valid_metadata(md, label):
-    """Cross-tool metadata invariants — shape + types + UTC."""
+    """Cross-tool metadata invariants: shape + types + UTC."""
     assert isinstance(md, dict), f"{label}: metadata is not a dict"
     extra = set(md) - METADATA_REQUIRED_KEYS
     missing = METADATA_REQUIRED_KEYS - set(md)
@@ -2068,7 +2068,7 @@ class TestMetadataAuditAcrossAllTools:
 
     @pytest.mark.parametrize("name,invoke", ALL_TOOL_INVOCATIONS, ids=[n for n, _ in ALL_TOOL_INVOCATIONS])
     def test_metadata_present_even_when_data_missing(self, tmp_path, name, invoke):
-        # No fixture at all — every tool must still produce a valid metadata
+        # No fixture at all: every tool must still produce a valid metadata
         # block (with warnings explaining the lack of data).
         result = invoke(tmp_path)
         assert "metadata" in result
@@ -2077,7 +2077,7 @@ class TestMetadataAuditAcrossAllTools:
 
 
 class TestFreshnessWarningPropagation:
-    """Spec §7.2-5 — freshness warning kicks in for stale data, on every tool."""
+    """Spec §7.2-5: freshness warning kicks in for stale data, on every tool."""
 
     @pytest.mark.parametrize("name,invoke", ALL_TOOL_INVOCATIONS, ids=[n for n, _ in ALL_TOOL_INVOCATIONS])
     def test_stale_data_yields_warning(self, tmp_path, name, invoke):
