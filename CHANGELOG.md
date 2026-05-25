@@ -4,7 +4,7 @@
 
 ### Highlights
 
-This release introduces the **KubeLedger MCP server** — an optional, read-only [Model Context Protocol](https://modelcontextprotocol.io/) surface that exposes the analytics produced by the backend (`static/data/*.json`) to MCP-aware clients (Claude Desktop, agents, IDEs). It enables clients to generate analyses, rankings, and visualizations that complement — without duplicating — the default web UI. The server never reads RRD databases directly, never writes, and embeds no LLM: it is a descriptive data surface.
+This release introduces the **KubeLedger MCP server**, an optional read-only [Model Context Protocol](https://modelcontextprotocol.io/) surface that exposes the analytics produced by the backend (`static/data/*.json`) to MCP-aware clients (Claude Desktop, agents, IDEs). It enables clients to generate analyses, rankings, and visualizations that complement without duplicating the default web UI. The server never reads RRD databases directly, never writes, and embeds no LLM: it is a descriptive data surface.
 
 This release also ships a **default-on NetworkPolicy** that protects the pod (backend and MCP) at the network layer, replacing the absence of authentication on the MCP transport in v1.
 
@@ -13,22 +13,22 @@ This release also ships a **default-on NetworkPolicy** that protects the pod (ba
 #### MCP server (optional, opt-in)
 
 - New `mcp_server.py` module distributed in the container image.
-- **Transport**: Streamable HTTP only — single endpoint `/mcp`, the modern MCP transport supported by Claude Desktop, Claude Code, MCP Inspector, and `mcp-remote` proxies. SSE (legacy two-endpoint pattern) and stdio (subprocess) transports are not exposed in v1; KubeLedger's data lives in-cluster and is naturally consumed over HTTP via the pod's `Service`, not by spawning a local subprocess. A future release may reintroduce SSE if a non-trivial deployment proves it useful.
+- **Transport**: Streamable HTTP only with a single endpoint `/mcp`, the modern MCP transport supported by Claude Desktop, Claude Code, MCP Inspector, and `mcp-remote` proxies. SSE (legacy two-endpoint pattern) and stdio (subprocess) transports are not exposed in v1; KubeLedger's data lives in-cluster and is naturally consumed over HTTP via the pod's `Service`, not by spawning a local subprocess. A future release may reintroduce SSE if a non-trivial deployment proves it useful.
 - Helm: a second container `mcp` is added to the pod when `mcp.enabled=true` (disabled by default), reusing the same image with `command: ["python3", "-u", "./mcp_server.py"]`. The shared `static/data/` volume is mounted **read-only** in the MCP container.
-- Helm: the existing Service is extended with a second named port `mcp` (default `5484`), conditional on `mcp.enabled`. Type stays `ClusterIP` — intra-cluster access only in v1.
+- Helm: the existing Service is extended with a second named port `mcp` (default `5484`), conditional on `mcp.enabled`. Type stays `ClusterIP` intra-cluster access only in v1.
 - Configuration: the MCP server resolves its data directory from `KL_MCP_DATA_DIR` / `KOA_MCP_DATA_DIR` (default `./static/data`), consistent with the existing `KL_*`/`KOA_*` convention. Listen address/port via `KL_MCP_LISTEN_HOST` (default `0.0.0.0`) and `KL_MCP_LISTEN_PORT` (default `5484`).
 
 #### NetworkPolicy (default on)
 
 - New template `templates/networkpolicy.yaml` shipped with the chart. Covers **both** the backend and MCP ports, since the MCP server has no authentication in v1 and the policy is the only access-control mechanism.
-- Default: `networkPolicy.enabled=true`, `allowedSources=[]`, `mcpAllowedSources=[]` — **deny-by-default**.
+- Default: `networkPolicy.enabled=true`, `allowedSources=[]`, `mcpAllowedSources=[]`  (**deny-by-default**).
 - **Operator action required** on clusters that enforce NetworkPolicy (e.g. OpenShift with OVN-Kubernetes): set `networkPolicy.allowedSources` (and `mcpAllowedSources` when MCP is enabled) to the legitimate `NetworkPolicyPeer` entries (`podSelector`, `namespaceSelector`, `ipBlock`). Leaving these lists empty filters all ingress traffic to the pod — this is the intended safe failure mode, not a bug.
 - To disable the policy and rely on cluster-level controls instead, set `networkPolicy.enabled=false`.
 
 ### Out of scope for v1
 
-- External exposure of the MCP server (OpenShift `Route` / Ingress) and token authentication — the MCP stays in `ClusterIP` for now.
-- LLM calls, predictions, or prescriptive recommendations — the MCP server is purely descriptive.
+- External exposure of the MCP server (OpenShift `Route` / Ingress) and token authentication (the MCP stays in `ClusterIP` for now).
+- LLM calls, predictions, or prescriptive recommendations. This means the MCP server is purely descriptive.
 
 ## v26.01.1
 
