@@ -18,7 +18,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
-- [MCP Integration (AI Assistant) / Requires v26.05.0+](#mcp-integration-ai-assistant--requires-v26051)
+- [MCP Integration (AI Assistant) / Requires v26.05.0+](#mcp-integration-ai-assistant--requires-v26050)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
 - [Configuration](#configuration)
@@ -31,6 +31,8 @@
 **KubeLedger** is a usage accounting tool that helps organizations track, analyze, and optimize **CPU, Memory, and GPU** resources on Kubernetes clusters over time (hourly, daily, monthly).
 
 It acts as a **System of Record** for your cluster resources, providing insightful usage analytics and charts that engineering and financial teams can use as key indicators for cost optimization decisions.
+
+> **New in v26.05: ask your AI assistant.** KubeLedger ships an optional [Model Context Protocol (MCP) server](#mcp-integration-ai-assistant--requires-v26050) that exposes the same analytics to AI tools such as Claude, Gemini, Mistral, Cursor, Windsurf, MCP Inspector and other MCP-aware clients. Ten read-only tools let an assistant rank consumers, group namespaces, assess efficiency or compare periods in plain language, unlocking investigations beyond what predefined dashboards can show.
 
 ### Tracked Resources
 
@@ -52,6 +54,7 @@ It acts as a **System of Record** for your cluster resources, providing insightf
 | **Usage Efficiency Analysis** | Compare resource requests against actual usage to identify over/under-provisioning |
 | **Cost Allocation & Chargeback** | Automatic resource usage accounting per namespace for billing and showback |
 | **Prometheus Integration** | Native exporter at `/metrics` for Grafana dashboards and alerting |
+| **AI Assistant Integration (MCP)** | **New in v26.05.** Read-only Model Context Protocol server: AI tools such as Claude, Gemini, Mistral and Cursor query usage, efficiency, trends and rankings in plain language through ten read-only tools |
 
 ## Quick Start
 
@@ -162,7 +165,7 @@ kubectl port-forward svc/kubeledger 5483:80 -n kubeledger
 
 ## MCP Integration (AI Assistant) / Requires v26.05.0+
 
-KubeLedger ships with an **optional MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server** that gives MCP-aware AI tools **direct access to the underlying analytics data**: the consolidated CPU, memory and GPU usage that the web UI is built on. MCP is an open standard adopted by a growing ecosystem: Anthropic's Claude Desktop and Claude Code, Google's Gemini CLI, IDE assistants such as Cursor, Windsurf and Cline, the MCP Inspector developer tool, and others.
+KubeLedger ships with an **optional MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server** that gives MCP-aware AI tools **direct access to the underlying analytics data**: the consolidated CPU, memory and GPU usage that the web UI is built on. MCP is an open standard adopted by a growing ecosystem: Anthropic's Claude Desktop and Claude Code, Google's Gemini CLI, Mistral's Le Chat, IDE assistants such as Cursor, Windsurf and Cline, the MCP Inspector developer tool, and others.
 
 Where the UI renders a fixed set of dashboards, the MCP exposes ten read-only tools that let an AI assistant combine, filter and aggregate this data into **custom rankings, namespace groupings, efficiency assessments, trend comparisons and narrative insights**, i.e. analyses the UI does not predefine.
 
@@ -325,7 +328,7 @@ The assistant picks the right tool automatically. Ask in plain language:
 3. Data is consolidated into hourly, daily, and monthly aggregates
 4. `dump_analytics` periodically writes the aggregates as JSON files into a shared volume
 5. The Flask API serves the data to the built-in web UI and Prometheus scraper
-6. *(optional)* The MCP container reads the same JSON files **read-only** and exposes them as 10 MCP tools to AI assistants. See [MCP Integration](#mcp-integration-ai-assistant)
+6. *(optional)* The MCP container reads the same JSON files **read-only** and exposes them as 10 MCP tools to AI assistants. See [MCP Integration](#mcp-integration-ai-assistant--requires-v26050)
 
 ## Documentation
 
