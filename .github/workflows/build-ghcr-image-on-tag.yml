@@ -35,13 +35,25 @@ jobs:
           echo "tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "git_tag=${GIT_TAG}" >> $GITHUB_OUTPUT
       
+#      - name: Build and push
+#        uses: docker/build-push-action@v6
+#        with:
+#          context: .
+#          push: true
+#          tags: |
+#            ghcr.io/realopslabs/kubeledger:${{ steps.version.outputs.tag }}
+#            ghcr.io/realopslabs/kubeledger:latest
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile
           push: true
+          provenance: false
+          sbom: false
           tags: |
             ghcr.io/realopslabs/kubeledger:${{ steps.version.outputs.tag }}
-            ghcr.io/realopslabs/kubeledger:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/realopslabs/kubeledger:latest                
