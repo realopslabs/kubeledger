@@ -3,7 +3,7 @@
 #
 # Rationale (see docs/kubeledger-mcp-spec.md §3.5): the MCP server in v1 has
 # no authentication; this NetworkPolicy is the only access-control mechanism.
-# It therefore covers BOTH the backend (UI/API) and the MCP ports — leaving
+# It therefore covers BOTH the backend (UI/API) and the MCP ports: leaving
 # either one unrestricted would defeat the purpose. Empty source lists mean
 # deny-by-default: a safe failure mode that requires explicit configuration.
 #
@@ -31,7 +31,7 @@ spec:
         - protocol: TCP
           port: {{ .Values.service.targetPort }}
     {{- if .Values.mcp.enabled }}
-    # MCP server — only when mcp.enabled is true.
+    # MCP server: only when mcp.enabled is true.
     - from:
         {{- toYaml .Values.networkPolicy.mcpAllowedSources | nindent 8 }}
       ports:

@@ -4,7 +4,7 @@
 Read-only MCP (Model Context Protocol) server exposing KubeLedger analytics
 that backend.py already materializes as JSON files under static/data/. The
 server never reads the RRD databases directly, never writes, and never embeds
-an LLM — it is a descriptive data surface, and the narrative intelligence is
+an LLM: it is a descriptive data surface, and the narrative intelligence is
 brought by the MCP client.
 
 This file is built up incrementally, following the implementation plan of
@@ -34,7 +34,7 @@ DEFAULT_DATA_DIR = "./static/data"
 BACKEND_CONFIG_FILENAME = "backend.json"
 
 # Histogram periods written by backend.py:dump_histogram_analytics.
-# These are not granularities — they are retrieval windows. backend.py groups
+# These are not granularities: they are retrieval windows. backend.py groups
 # by month for the year window and by day for the 14-day window. See spec §2.1.
 PERIOD_14_DAYS_SEC = 1209600
 PERIOD_YEAR_SEC = 31968000
@@ -56,7 +56,7 @@ SCALE_DEFAULT_DEPTH = {
 }
 
 # Translation from the cost_model written by backend.py to its semantic unit
-# (used in the metadata block of every MCP response — spec §4.6).
+# (used in the metadata block of every MCP response: spec §4.6).
 COST_MODEL_UNIT = {
     "cumulative": "percent_of_cluster_capacity",
     "normalized": "relative_share_percent",
@@ -72,7 +72,7 @@ DIMENSIONS = ("usage", "requests")
 # kube-public, kube-node-lease) share the same role.
 SYSTEM_NAMESPACE_PREFIXES = ("openshift-", "kube-")
 
-# Special entries that are NOT namespaces — see spec §2.4. Always listed
+# Special entries that are NOT namespaces: see spec §2.4. Always listed
 # in list_namespaces' special_entries block, regardless of whether they
 # happen to appear in the data on this particular run.
 SPECIAL_ENTRIES: dict[str, dict[str, str]] = {
@@ -81,13 +81,13 @@ SPECIAL_ENTRIES: dict[str, dict[str, str]] = {
         "description": (
             "Cluster capacity reserved for system overhead, not allocatable "
             "to pods. Excluded from usage analyses by default, but exposed as "
-            "a separate signal — e.g. cluster_overhead in get_namespace_breakdown."
+            "a separate signal: e.g. cluster_overhead in get_namespace_breakdown."
         ),
     },
     ".billing-hourly-rate": {
         "role": "billing_config",
         "description": (
-            "Hourly billing rate, present only when cost_model=costs. Not a usage data point — a configuration value."
+            "Hourly billing rate, present only when cost_model=costs. Not a usage data point: a configuration value."
         ),
     },
 }
@@ -100,7 +100,7 @@ FRESHNESS_WARN_AFTER_SECONDS = 1800
 #
 # requests is derived in backend.py as ``usage / rf`` (request factor), so a
 # very high rf yields an *infinitesimal* but non-zero requests value. The
-# exact ``requests == 0`` test is therefore insufficient — any value below
+# exact ``requests == 0`` test is therefore insufficient: any value below
 # this threshold must be treated as zero, otherwise usage/requests produces
 # numerical aberrations.
 REQUESTS_ZERO_THRESHOLD = 1e-6
@@ -112,8 +112,8 @@ REQUESTS_ZERO_THRESHOLD = 1e-6
 EFFICIENCY_OVER_PROVISIONED_BELOW = 0.5
 EFFICIENCY_UNDER_PROVISIONED_ABOVE = 1.0
 
-# Relative change threshold for ``compare_periods`` trend classification —
-# noise filter, applied to the difference between first-half and second-half
+# Relative change threshold for ``compare_periods`` trend classification:
+# a noise filter, applied to the difference between first-half and second-half
 # means of the monthly series. 10 % of the baseline.
 TREND_CHANGE_THRESHOLD = 0.10
 
@@ -191,7 +191,7 @@ def read_json_file(filename: str, data_dir: Path | None = None) -> FileReadResul
     Path containment: today every call site uses a fixed name derived from
     :func:`histogram_filename`, :func:`trends_filename`, or
     :data:`BACKEND_CONFIG_FILENAME`, so traversal cannot happen. The guard
-    below makes that contract explicit — any future caller passing
+    below makes that contract explicit: any future caller passing
     untrusted input will fail closed rather than escape the data directory.
     """
     if "/" in filename or "\\" in filename or ".." in filename or filename.startswith("."):
@@ -266,14 +266,14 @@ def read_json_file(filename: str, data_dir: Path | None = None) -> FileReadResul
 
 
 # ---------------------------------------------------------------------------
-# Filename helpers — derived from backend.py:dump_histogram_analytics and
+# Filename helpers: derived from backend.py:dump_histogram_analytics and
 # dump_trend_analytics. The MCP holds no other assumption about file paths.
 # ---------------------------------------------------------------------------
 
 
 def _mem_label(gpu: bool) -> str:
     # backend.py uses "memory" for standard metrics and "mem" when the
-    # gpu_ prefix is applied — see backend.py:1078 and 1181.
+    # gpu_ prefix is applied: see backend.py:1078 and 1181.
     return "mem" if gpu else "memory"
 
 
@@ -302,7 +302,7 @@ def trends_filename(metric: str, category: str, gpu: bool = False) -> str:
     Args:
         metric: ``"cpu"`` or ``"memory"``.
         category: ``"usage"`` or ``"rf"`` (request factor). ``rf`` only
-            exists in the non-GPU variant — backend.py does not emit
+            exists in the non-GPU variant: backend.py does not emit
             ``gpu_*_rf_trends.json``.
         gpu: ``True`` to select the GPU variant.
 
@@ -317,7 +317,7 @@ def trends_filename(metric: str, category: str, gpu: bool = False) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Cost model — loaded from static/data/backend.json (spec §2.3)
+# Cost model: loaded from static/data/backend.json (spec §2.3)
 # ---------------------------------------------------------------------------
 
 
@@ -328,7 +328,7 @@ class CostModelInfo:
     The labels here are the **translated** ones from ``backend.json``
     (``cumulative`` / ``normalized`` / ``costs``), not the internal config
     names (``CUMULATIVE_RATIO`` / ``RATIO`` / ``CHARGE_BACK``). The MCP must
-    only consider the translated labels — see spec §2.3.
+    only consider the translated labels: see spec §2.3.
     """
 
     cost_model: str
@@ -371,7 +371,7 @@ def load_cost_model(data_dir: Path | None = None) -> tuple[CostModelInfo | None,
 
 
 # ---------------------------------------------------------------------------
-# Dataset discovery — describe what the data directory currently exposes
+# Dataset discovery: describe what the data directory currently exposes
 # ---------------------------------------------------------------------------
 
 
@@ -400,7 +400,7 @@ class DatasetInfo:
     """Snapshot of the dataset currently exposed by ``static/data/``.
 
     Built from the **files that actually exist** at probe time. Depths and
-    point counts are derived from the data — never hard-coded — so that the
+    point counts are derived from the data: never hard-coded: so that the
     response stays honest if backend.py runs in a degraded mode (spec §7.2
     point 1, "honnêteté temporelle").
     """
@@ -432,7 +432,7 @@ def _iso_utc(epoch_seconds: float) -> str:
 def _trends_depth(payload: Any) -> tuple[str | None, int]:
     """Derive (human-readable depth, points_per_namespace) from a trends payload.
 
-    backend.py:dump_trend_data writes one entry per (namespace, hour) — so
+    backend.py:dump_trend_data writes one entry per (namespace, hour): so
     for any single namespace, ``points_per_namespace`` equals the number of
     distinct ``dateUTC`` timestamps. We use distinct timestamps over the whole
     file as an upper bound, which is what describe_dataset wants to expose.
@@ -472,7 +472,7 @@ def discover_dataset(data_dir: Path | None = None) -> DatasetInfo:
     warnings.extend(cm_warnings)
 
     # ------------------------------------------------------------------
-    # Probe histograms — which (metric, dimension, scale, gpu) files exist.
+    # Probe histograms: which (metric, dimension, scale, gpu) files exist.
     # ------------------------------------------------------------------
 
     probed: dict[str, FileReadResult] = {}
@@ -518,7 +518,7 @@ def discover_dataset(data_dir: Path | None = None) -> DatasetInfo:
             dimensions.append("requests")
 
     # ------------------------------------------------------------------
-    # Scales — depth and points derived from data when readable.
+    # Scales: depth and points derived from data when readable.
     # ------------------------------------------------------------------
 
     scales: dict[str, ScaleInfo] = {}
@@ -539,7 +539,7 @@ def discover_dataset(data_dir: Path | None = None) -> DatasetInfo:
         )
 
     # ------------------------------------------------------------------
-    # Trends — depth derived from the first usage trends file we can read.
+    # Trends: depth derived from the first usage trends file we can read.
     # ------------------------------------------------------------------
 
     trends: TrendsInfo | None = None
@@ -555,7 +555,7 @@ def discover_dataset(data_dir: Path | None = None) -> DatasetInfo:
             break
 
     # ------------------------------------------------------------------
-    # Efficiency capability — aggregated vs. hourly timeseries.
+    # Efficiency capability: aggregated vs. hourly timeseries.
     # ------------------------------------------------------------------
 
     aggregated_efficiency = "requests" in dimensions
@@ -566,7 +566,7 @@ def discover_dataset(data_dir: Path | None = None) -> DatasetInfo:
     )
 
     # ------------------------------------------------------------------
-    # Data freshness — most recent mtime across the data files probed.
+    # Data freshness: most recent mtime across the data files probed.
     # backend.json is excluded: it is written once at start-up and its
     # mtime does not reflect data freshness (spec §7.2 point 5).
     # ------------------------------------------------------------------
@@ -577,12 +577,12 @@ def discover_dataset(data_dir: Path | None = None) -> DatasetInfo:
     data_freshness_utc = _iso_utc(max(mtimes)) if mtimes else None
 
     # ------------------------------------------------------------------
-    # billing_hourly_rate — exposed only in cost_model=costs.
+    # billing_hourly_rate: exposed only in cost_model=costs.
     # backend.py does not write this value into backend.json today, and it
     # filters the .billing-hourly-rate entry out of the histogram outputs
     # (see backend.py:1144). The value is therefore not reachable from the
     # static JSON surface in v1. We surface this gap as a warning rather
-    # than guessing — the caller knows the field is unavailable.
+    # than guessing: the caller knows the field is unavailable.
     # ------------------------------------------------------------------
 
     billing_hourly_rate: float | None = None
@@ -617,7 +617,7 @@ def classify_namespace(name: str) -> str:
     Possible values:
 
     - ``"special"`` if ``name`` is a known special entry (``non-allocatable``,
-      ``.billing-hourly-rate`` — see spec §2.4).
+      ``.billing-hourly-rate``: see spec §2.4).
     - ``"system"`` if ``name`` starts with a known system prefix
       (``openshift-``, ``kube-``).
     - ``"application"`` otherwise.
@@ -641,7 +641,7 @@ def _iter_data_filenames(include_gpu: bool = True) -> list[str]:
                     out.append(histogram_filename(metric, dimension, period, gpu=gpu))
         for category in ("usage", "rf"):
             for gpu in gpu_variants:
-                # backend.py emits no gpu_*_rf_trends.json — see spec §2.2.
+                # backend.py emits no gpu_*_rf_trends.json: see spec §2.2.
                 if gpu and category == "rf":
                     continue
                 out.append(trends_filename(metric, category, gpu=gpu))
@@ -658,7 +658,7 @@ def _collect_namespace_names(
         every ``stack`` (histograms) and ``name`` (trends) field observed,
         ``warnings`` lists files that exist but failed to parse (recoverable),
         and ``latest_mtime`` is the most recent POSIX mtime across files
-        actually read — used to compute ``generated_at_utc``.
+        actually read: used to compute ``generated_at_utc``.
 
     """
     root = data_dir if data_dir is not None else get_data_dir()
@@ -710,7 +710,7 @@ def build_metadata(
 
     ``cost_model`` / ``currency`` / ``unit`` are global (derived from
     ``backend.json``). The remaining fields are tool-specific and omitted
-    when not applicable. Always returns the same shape — unused fields are
+    when not applicable. Always returns the same shape: unused fields are
     set to ``null`` so the schema is predictable for clients.
 
     A freshness warning is appended automatically when ``generated_at_mtime``
@@ -740,7 +740,7 @@ def build_metadata(
 
 
 # ---------------------------------------------------------------------------
-# Tools — Discovery group (spec §4.1)
+# Tools: Discovery group (spec §4.1)
 # ---------------------------------------------------------------------------
 
 
@@ -748,7 +748,7 @@ def tool_list_namespaces(data_dir: Path | None = None) -> dict[str, Any]:
     """Implement the ``list_namespaces`` MCP tool.
 
     Returns the real namespaces seen across all data files (classified as
-    ``application`` or ``system``) and the known special entries — listed
+    ``application`` or ``system``) and the known special entries: listed
     explicitly so the client cannot confuse them with namespaces.
     """
     root = data_dir if data_dir is not None else get_data_dir()
@@ -763,7 +763,7 @@ def tool_list_namespaces(data_dir: Path | None = None) -> dict[str, Any]:
         if kind == "special":
             # Special entries are surfaced in their own block, not mingled
             # with the namespace list. We intentionally do NOT silently drop
-            # them — they are accounted for via SPECIAL_ENTRIES below.
+            # them: they are accounted for via SPECIAL_ENTRIES below.
             continue
         namespaces.append({"name": name, "type": kind})
         counts[kind] += 1
@@ -794,7 +794,7 @@ def tool_list_namespaces(data_dir: Path | None = None) -> dict[str, Any]:
 def tool_describe_dataset(data_dir: Path | None = None) -> dict[str, Any]:
     """Implement the ``describe_dataset`` MCP tool.
 
-    Announces what the dataset currently exposes — metrics, GPU availability,
+    Announces what the dataset currently exposes: metrics, GPU availability,
     scales (with actual point counts derived from the data), trend depth,
     available dimensions, efficiency capability, cost model. Intended to be
     called first by any well-behaved client so it does not over-promise.
@@ -818,7 +818,7 @@ def tool_describe_dataset(data_dir: Path | None = None) -> dict[str, Any]:
         }
 
     # Convert the data_freshness ISO string back to a mtime for the metadata
-    # helper — keeps freshness warning logic centralised.
+    # helper: keeps freshness warning logic centralised.
     freshness_mtime: float | None = None
     if info.data_freshness_utc is not None:
         try:
@@ -900,7 +900,7 @@ def _unique_dates_in_order(entries: list[dict[str, Any]]) -> list[str]:
     """Distinct ``date`` values in the order they first appear in the file.
 
     backend.py emits entries in chronological order over RRD consolidated
-    data points, so the first occurrence order is chronological — taking
+    data points, so the first occurrence order is chronological: taking
     the last element here means "most recent date in the data".
     """
     seen: list[str] = []
@@ -949,7 +949,7 @@ def _round(value: float, decimals: int = 6) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Tools — Consolidations group (spec §4.2)
+# Tools: Consolidations group (spec §4.2)
 # ---------------------------------------------------------------------------
 
 
@@ -960,11 +960,11 @@ def tool_get_usage(
     exclude_special: bool = True,
     data_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Implement the ``get_usage`` MCP tool — usage per namespace.
+    """Implement the ``get_usage`` MCP tool: usage per namespace.
 
     Returns the time series ``{namespace, date, value}`` from the histogram
     file for the requested (metric, scale). System namespaces are NOT
-    filtered (callers see them) — only special entries are excluded when
+    filtered (callers see them): only special entries are excluded when
     ``exclude_special`` is True (the default, per spec §2.4).
     """
     _validate_metric(metric)
@@ -1044,7 +1044,7 @@ def tool_get_top_consumers(
     """Implement the ``get_top_consumers`` MCP tool.
 
     Ranks namespaces by usage descending for the selected date (last
-    available by default). Special entries are ALWAYS excluded — letting
+    available by default). Special entries are ALWAYS excluded: letting
     ``non-allocatable`` top the ranking would defeat the purpose (spec §2.4).
     ``exclude_system`` only controls whether system namespaces appear.
     """
@@ -1158,7 +1158,7 @@ def tool_get_namespace_breakdown(
 
     Returns the full ranked breakdown of namespaces (not limited), plus
     concentration indicators (top-3 / top-10 share) and a ``cluster_overhead``
-    block that surfaces ``non-allocatable`` separately — never mingled with
+    block that surfaces ``non-allocatable`` separately: never mingled with
     namespaces (spec §4.2). ``cluster_overhead.non_allocatable_share_pct``
     and ``allocatable_share_pct`` are computed against the total cluster
     (overhead + namespaces) and sum to 100 %.
@@ -1291,12 +1291,12 @@ def tool_get_namespace_breakdown(
 
 
 # ---------------------------------------------------------------------------
-# Tools — Efficiency group (spec §4.3)
+# Tools: Efficiency group (spec §4.3)
 # ---------------------------------------------------------------------------
 
 
 def _classify_efficiency(ratio: float) -> str:
-    """Descriptive classification — never prescriptive (spec §4.3)."""
+    """Descriptive classification: never prescriptive (spec §4.3)."""
     if ratio < EFFICIENCY_OVER_PROVISIONED_BELOW:
         return "over_provisioned"
     if ratio > EFFICIENCY_UNDER_PROVISIONED_ABOVE:
@@ -1337,7 +1337,7 @@ def tool_get_efficiency(
     is made (spec §4.3).
 
     Tolerance to zero (§4.3): ``requests`` is derived from ``usage / rf``,
-    so a high ``rf`` produces an infinitesimal — not strictly zero —
+    so a high ``rf`` produces an infinitesimal (not strictly zero)
     aggregate. Any aggregate below :data:`REQUESTS_ZERO_THRESHOLD` is
     treated as zero; the ratio becomes ``null`` and a warning is added.
     """
@@ -1380,8 +1380,8 @@ def tool_get_efficiency(
         if req_mtime is not None:
             latest_mtime = req_mtime if latest_mtime is None else max(latest_mtime, req_mtime)
 
-        # Capture the data window once — both files share the same dates by
-        # construction (backend.py:1141 — same iteration over usage dates).
+        # Capture the data window once: both files share the same dates by
+        # construction (backend.py:1141: same iteration over usage dates).
         if data_window is None:
             dates = _unique_dates_in_order(usage_entries)
             data_window = _build_data_window(scale, dates)
@@ -1422,10 +1422,10 @@ def tool_get_efficiency(
                 }
             )
 
-    # Stable order: (namespace, metric) — same namespace's metrics stay adjacent.
+    # Stable order: (namespace, metric): same namespace's metrics stay adjacent.
     efficiency.sort(key=lambda e: (e["namespace"], e["metric"]))
 
-    # source_file is a single string in the metadata block — join the
+    # source_file is a single string in the metadata block: join the
     # contributing files so the trail is preserved without changing shape.
     source_file = ", ".join(source_files) if source_files else None
 
@@ -1451,7 +1451,7 @@ def tool_get_efficiency(
 
 
 # ---------------------------------------------------------------------------
-# Tools — Trends group (spec §4.4)
+# Tools: Trends group (spec §4.4)
 # ---------------------------------------------------------------------------
 
 
@@ -1471,7 +1471,7 @@ def _load_trends_payload(
     backend.py emits ``*_<category>_trends.json`` with hourly entries
     ``{name, dateUTC, usage}`` over a 7-day window. The value field is named
     ``usage`` even in ``*_rf_trends.json`` (it carries the efficiency ratio
-    there — the filename, not the field, encodes the semantics; spec §2.2).
+    there: the filename, not the field, encodes the semantics; spec §2.2).
     """
     fname = trends_filename(metric, category, gpu=gpu)
     result = read_json_file(fname, data_dir=data_dir)
@@ -1488,7 +1488,7 @@ def _filter_trends_namespace(
 ) -> tuple[list[dict[str, Any]], list[float]]:
     """Extract ``(series, raw_values)`` for one namespace from trends entries.
 
-    Preserves the file order — backend.py emits points chronologically per
+    Preserves the file order: backend.py emits points chronologically per
     namespace, so the resulting series is monotonic in time without an
     explicit sort.
     """
@@ -1511,7 +1511,7 @@ def _compute_trend_stats(
     series: list[dict[str, Any]],
     values: list[float],
 ) -> dict[str, Any]:
-    """Min / max / mean / window bounds for a timeseries — null when empty."""
+    """Min / max / mean / window bounds for a timeseries: null when empty."""
     if not values or not series:
         return {
             "min": None,
@@ -1544,7 +1544,7 @@ def _trends_data_window(stats: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _classify_trend(values: list[float]) -> str:
-    """Return an indicative direction for a monthly series — descriptive only.
+    """Return an indicative direction for a monthly series: descriptive only.
 
     Splits the series into halves and compares means with a 10 % relative
     threshold against the first half's magnitude. Returns one of
@@ -1562,7 +1562,7 @@ def _classify_trend(values: list[float]) -> str:
     second_mean = sum(second_half) / len(second_half)
     if first_mean == 0:
         # Usage values in this domain are non-negative (sum of RRD CDPs
-        # rounded to 6 decimals — see backend.py:dump_histogram_analytics),
+        # rounded to 6 decimals: see backend.py:dump_histogram_analytics),
         # so second_mean is either zero (stable) or positive (growing).
         return "growing" if second_mean > 0 else "stable"
     delta_ratio = (second_mean - first_mean) / abs(first_mean)
@@ -1582,7 +1582,7 @@ def tool_get_timeseries(
 
     Returns the hourly usage series over the trends window (~7 days in v1)
     for a single namespace, plus simple pre-computed statistics. Depth is
-    derived from the data — not hard-coded — so the response stays accurate
+    derived from the data: not hard-coded: so the response stays accurate
     if backend.py later widens or narrows the trends retention.
     """
     _validate_metric(metric)
@@ -1641,7 +1641,7 @@ def tool_get_efficiency_timeseries(
 
     Same shape as :func:`tool_get_timeseries`, sourced from
     ``*_rf_trends.json``. The numeric value at each hour is the efficiency
-    factor (``rf = usage / requests``) — not bounded by 1; values > 1 mean
+    factor (``rf = usage / requests``): not bounded by 1; values > 1 mean
     usage exceeds requests (under-provisioning), per spec §4.4. The unit
     in the metadata is set to ``efficiency_ratio`` so the client cannot
     confuse it with the cost_model's unit.
@@ -1747,7 +1747,7 @@ def tool_compare_periods(
     for a single namespace and presents both side-by-side: aggregate over
     14 days, plus the monthly trajectory with a descriptive direction
     (growing / stable / decreasing / insufficient_data). Strictly
-    descriptive — no prediction is attempted (spec §4.4).
+    descriptive: no prediction is attempted (spec §4.4).
     """
     _validate_metric(metric)
     _validate_namespace(namespace)
@@ -1816,7 +1816,7 @@ def tool_compare_periods(
 
 
 # ---------------------------------------------------------------------------
-# Tools — Utility group (spec §4.5)
+# Tools: Utility group (spec §4.5)
 # ---------------------------------------------------------------------------
 
 
@@ -1830,12 +1830,12 @@ def tool_group_namespaces(
     """Implement the ``group_namespaces`` MCP tool.
 
     Aggregates namespaces whose names match a glob ``pattern`` (Unix-style,
-    backed by :mod:`fnmatch` — same convention as backend.py uses for its
+    backed by :mod:`fnmatch`: same convention as backend.py uses for its
     include/exclude lists). Returns the group's total, the matched count,
     and a per-member breakdown sorted by value descending.
 
     Special entries (``non-allocatable``, ``.billing-hourly-rate``) are
-    always excluded — letting them match a wildcard like ``*`` would inflate
+    always excluded: letting them match a wildcard like ``*`` would inflate
     the group total with non-usage values (spec §2.4).
     """
     _validate_metric(metric)
@@ -1945,7 +1945,7 @@ def tool_group_namespaces(
 
 
 # ---------------------------------------------------------------------------
-# MCP wiring (spec §7.2 step 8) — protocol layer, transport, entry point
+# MCP wiring (spec §7.2 step 8): protocol layer, transport, entry point
 # ---------------------------------------------------------------------------
 #
 # The tool_* functions above are plain Python: they take native Python args,
@@ -1954,7 +1954,7 @@ def tool_group_namespaces(
 #
 # - registers each tool with the MCP SDK via FastMCP (it auto-generates the
 #   ``inputSchema`` from type annotations);
-# - exposes the tools over the Streamable HTTP transport (spec §3.4 — the
+# - exposes the tools over the Streamable HTTP transport (spec §3.4: the
 #   single endpoint ``/mcp`` is what the K8s Service publishes; SSE and
 #   stdio are intentionally not supported, see ``main()`` docstring);
 # - detects whether the SDK supports ``structuredContent`` /
@@ -1966,7 +1966,7 @@ def tool_group_namespaces(
 # isolation (e.g. when unit-testing the tool_* functions on a machine
 # without the SDK installed).
 #
-# Note on response shape — FastMCP convention. When a tool returns a generic
+# Note on response shape: FastMCP convention. When a tool returns a generic
 # ``Dict[str, Any]`` (rather than a Pydantic model), the SDK wraps the value
 # under a ``"result"`` key in ``structuredContent``. So the JSON shape the
 # client receives is:
@@ -1978,7 +1978,7 @@ def tool_group_namespaces(
 #
 # The unwrapped spec-shape (§4.1–§4.5) is therefore reachable two ways:
 # parsing ``content[0].text`` (text fallback, always present) or navigating
-# ``structuredContent.result.*``. Both carry identical data — and both
+# ``structuredContent.result.*``. Both carry identical data: and both
 # include the ``metadata`` block. This is a deliberate FastMCP safety
 # convention, not a spec violation; clients are expected to handle it.
 
@@ -1990,7 +1990,7 @@ _MCP_TOOL_REGISTRY: list[tuple[str, Any]] = [
 
 
 def _build_mcp_app() -> Any:
-    """Build and configure the FastMCP application — done lazily.
+    """Build and configure the FastMCP application: done lazily.
 
     Kept lazy so importing ``mcp_server`` does NOT require the ``mcp`` SDK
     to be installed; only :func:`main` triggers it. This is also what
@@ -2018,7 +2018,7 @@ def _build_mcp_app() -> Any:
             "Exposes namespace usage, top consumers, breakdown with cluster "
             "overhead, efficiency (aggregated and hourly), trends, and "
             "regrouping by glob pattern. Every response carries a metadata "
-            "block with cost_model, unit, data window and warnings — call "
+            "block with cost_model, unit, data window and warnings: call "
             "describe_dataset first to learn what is available."
         ),
         host=host,
@@ -2031,10 +2031,10 @@ def _build_mcp_app() -> Any:
     # Python ``tool_*`` function. The annotations on the wrapper determine
     # the JSON Schema that FastMCP advertises to clients, so:
     #   - Use ``Literal[...]`` for the values that the spec constrains
-    #     (metric, scale) — clients get a strict enum at the protocol level.
+    #     (metric, scale): clients get a strict enum at the protocol level.
     #   - Use ``Optional[str]`` for free-form optional strings (namespace,
     #     date, pattern when allowed null) so they appear as nullable.
-    #   - Return ``Dict[str, Any]`` — FastMCP serialises and (when the SDK
+    #   - Return ``Dict[str, Any]``: FastMCP serialises and (when the SDK
     #     supports it) puts the result under ``structuredContent``.
 
     @app.tool(annotations=read_only_tool_annotations)
@@ -2100,7 +2100,7 @@ def _build_mcp_app() -> Any:
         namespace: str | None = None,
         metric: Literal["cpu", "memory"] | None = None,
     ) -> dict[str, Any]:
-        """Return usage/requests ratio per (namespace, metric) — descriptive classification."""
+        """Return usage/requests ratio per (namespace, metric): descriptive classification."""
         return tool_get_efficiency(scale=scale, namespace=namespace, metric=metric)
 
     @app.tool(annotations=read_only_tool_annotations)
@@ -2124,7 +2124,7 @@ def _build_mcp_app() -> Any:
         metric: Literal["cpu", "memory"],
         namespace: str,
     ) -> dict[str, Any]:
-        """Hourly efficiency factor (rf = usage/requests) series — not bounded at 1."""
+        """Hourly efficiency factor (rf = usage/requests) series: not bounded at 1."""
         return tool_get_efficiency_timeseries(metric=metric, namespace=namespace)
 
     @app.tool(annotations=read_only_tool_annotations)
@@ -2134,7 +2134,7 @@ def _build_mcp_app() -> Any:
         pattern: str,
         date: str | None = None,
     ) -> dict[str, Any]:
-        """Aggregate namespaces matching a glob pattern (fnmatch) — sum + per-member detail."""
+        """Aggregate namespaces matching a glob pattern (fnmatch): sum + per-member detail."""
         return tool_group_namespaces(
             metric=metric,
             scale=scale,
@@ -2174,7 +2174,7 @@ def detect_structured_content_support() -> tuple[bool, str]:
 
     FastMCP automatically routes return values through ``structuredContent``
     when the underlying SDK exposes it, falling back to a serialized text
-    block otherwise — so detection here is informational. Returns
+    block otherwise: so detection here is informational. Returns
     ``(supported, human_readable_reason)``.
     """
     try:
@@ -2196,7 +2196,7 @@ def detect_structured_content_support() -> tuple[bool, str]:
         return True, f"mcp SDK {sdk_version}: structuredContent + outputSchema both present"
     if has_structured:
         return True, f"mcp SDK {sdk_version}: structuredContent present, outputSchema missing"
-    return False, f"mcp SDK {sdk_version}: structuredContent not supported — falling back to text content"
+    return False, f"mcp SDK {sdk_version}: structuredContent not supported: falling back to text content"
 
 
 def main() -> None:
@@ -2207,7 +2207,7 @@ def main() -> None:
     a Service. Streamable HTTP is the modern transport that all current
     MCP clients (Claude Desktop, Claude Code, MCP Inspector) speak.
 
-    SSE was the historical transport — now deprecated and removed here to
+    SSE was the historical transport: now deprecated and removed here to
     avoid a second code path that no current client needs. stdio was only
     relevant for the ``.mcpb`` bundle pattern (data shipped locally), which
     does not fit KubeLedger's "data generated in-cluster" model. Both have
@@ -2239,26 +2239,26 @@ def main() -> None:
     if host in ("0.0.0.0", "::", "*"):
         # MCP v1 has no authentication at the tool layer (spec §3.5).
         # Wide-open binding is fine when the pod is protected by the chart's
-        # default-deny NetworkPolicy, but risky on a bare host — surface it
+        # default-deny NetworkPolicy, but risky on a bare host: surface it
         # so operators don't deploy outside that envelope by accident.
         logger.warning(
-            "binding on %s — server is reachable from any reachable interface. "
+            "binding on %s: server is reachable from any reachable interface. "
             "MCP v1 has no auth; rely on NetworkPolicy / firewall.",
             host,
         )
 
     supported, reason = detect_structured_content_support()
     if supported:
-        logger.info("structuredContent: ENABLED — %s", reason)
+        logger.info("structuredContent: ENABLED: %s", reason)
     else:
-        logger.info("structuredContent: DISABLED — %s", reason)
+        logger.info("structuredContent: DISABLED: %s", reason)
 
     app = _build_mcp_app()
     logger.info("registered %d MCP tools: %s", len(_MCP_TOOL_REGISTRY), ", ".join(n for n, _ in _MCP_TOOL_REGISTRY))
     logger.info("transport: streamable-http (endpoint: /mcp)")
 
     # Hand off to FastMCP's native ASGI transport. It internally builds a
-    # Starlette app and runs it with uvicorn — no custom ASGI plumbing
+    # Starlette app and runs it with uvicorn: no custom ASGI plumbing
     # needed (spec §3.3 / §7.3).
     app.run(transport="streamable-http")
 

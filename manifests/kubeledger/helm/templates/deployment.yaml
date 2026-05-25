@@ -97,7 +97,7 @@ spec:
             - name: mcp
               containerPort: {{ .Values.mcp.service.targetPort }}
               protocol: TCP
-          # TCP socket probes — protocol-agnostic baseline. HTTP/SSE endpoints
+          # TCP socket probes: protocol-agnostic baseline. HTTP/SSE endpoints
           # may evolve; a TCP probe simply asserts the asyncio server is bound.
           livenessProbe:
             tcpSocket:

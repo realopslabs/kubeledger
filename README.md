@@ -7,7 +7,7 @@
 [![GHCR Pulls](https://img.shields.io/badge/docker-ghcr.io%2Frealopslabs%2Fkubeledger-blue?style=for-the-badge)](https://github.com/realopslabs/kubeledger/pkgs/container/kubeledger)
 
 ---
-**KubeLedger** is the System of Record that tracks the full picture of Kubernetes costs — revealing the 30% hidden in non-allocatable overhead for precise, per-namespace accounting.
+**KubeLedger** is the System of Record that tracks the full picture of Kubernetes costs, revealing the 30% hidden in non-allocatable overhead for precise, per-namespace accounting.
 
 
 > **Note:** KubeLedger was formerly known as **Kubernetes Opex Analytics** aka `kube-opex-analytics`.
@@ -18,7 +18,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Quick Start](#quick-start)
-- [MCP Integration (AI Assistant) / Requires v26.05.0+](#mcp-integration-ai-assistant--requires-v26050)
+- [MCP Integration (AI Assistant) / Requires v26.05.1+](#mcp-integration-ai-assistant--requires-v26051)
 - [Architecture](#architecture)
 - [Documentation](#documentation)
 - [Configuration](#configuration)
@@ -160,11 +160,11 @@ kubectl port-forward svc/kubeledger 5483:80 -n kubeledger
 # Open http://localhost:5483 in your browser
 ```
 
-## MCP Integration (AI Assistant) / Requires v26.05.0+
+## MCP Integration (AI Assistant) / Requires v26.05.1+
 
-KubeLedger ships with an **optional MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server** that gives MCP-aware AI tools **direct access to the underlying analytics data** — the consolidated CPU, memory and GPU usage that the web UI is built on. MCP is an open standard adopted by a growing ecosystem: Anthropic's Claude Desktop and Claude Code, Google's Gemini CLI, IDE assistants such as Cursor, Windsurf and Cline, the MCP Inspector developer tool, and others.
+KubeLedger ships with an **optional MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server** that gives MCP-aware AI tools **direct access to the underlying analytics data**: the consolidated CPU, memory and GPU usage that the web UI is built on. MCP is an open standard adopted by a growing ecosystem: Anthropic's Claude Desktop and Claude Code, Google's Gemini CLI, IDE assistants such as Cursor, Windsurf and Cline, the MCP Inspector developer tool, and others.
 
-Where the UI renders a fixed set of dashboards, the MCP exposes ten read-only tools that let an AI assistant combine, filter and aggregate this data into **custom rankings, namespace groupings, efficiency assessments, trend comparisons and narrative insights** — analyses the UI does not predefine.
+Where the UI renders a fixed set of dashboards, the MCP exposes ten read-only tools that let an AI assistant combine, filter and aggregate this data into **custom rankings, namespace groupings, efficiency assessments, trend comparisons and narrative insights**, i.e. analyses the UI does not predefine.
 
 The server itself is **descriptive only**: it never reaches the Kubernetes API or RRD databases, embeds no LLM, and makes no recommendations. It exposes the data; the client provides the reasoning.
 
@@ -187,7 +187,7 @@ Each response carries a `metadata` block with cost_model, unit, data window, sou
 
 ### 1. Enable the MCP container at deploy time
 
-The MCP container is **opt-in** — disabled by default. Enable it via the Helm chart:
+The MCP container is **opt-in** and disabled by default. Enable it via the Helm chart:
 
 ```bash
 helm upgrade --install kubeledger ./manifests/kubeledger/helm \
@@ -197,11 +197,11 @@ helm upgrade --install kubeledger ./manifests/kubeledger/helm \
 
 Enabling adds a second container `mcp` to the pod (same image, command `python3 -u ./mcp_server.py`), mounts the `static/data/` volume **read-only**, and adds a named port `mcp` (default `5484`) on the existing Service.
 
-> **NetworkPolicy.** MCP v1 has no authentication at the tool layer — access control relies entirely on Kubernetes NetworkPolicy. The chart ships a default-deny policy covering both the dashboard and the MCP ports. Declare authorized sources via `networkPolicy.allowedSources` (dashboard) and `networkPolicy.mcpAllowedSources` (MCP); see the documented options and examples in [`manifests/kubeledger/helm/values.yaml`](manifests/kubeledger/helm/values.yaml). To disable the policy entirely and rely on cluster-level controls instead, set `networkPolicy.enabled=false`.
+> **NetworkPolicy.** MCP v1 has no authentication at the tool layer; access control relies entirely on Kubernetes NetworkPolicy. The chart ships a default-deny policy covering both the dashboard and the MCP ports. Declare authorized sources via `networkPolicy.allowedSources` (dashboard) and `networkPolicy.mcpAllowedSources` (MCP); see the documented options and examples in [`manifests/kubeledger/helm/values.yaml`](manifests/kubeledger/helm/values.yaml). To disable the policy entirely and rely on cluster-level controls instead, set `networkPolicy.enabled=false`.
 
 ### 2. Reach the MCP service from your workstation
 
-The Service is `ClusterIP` in v1 — external exposure (Route/Ingress) is out of scope. Use `kubectl port-forward` to reach it from your laptop:
+The Service is `ClusterIP` in v1; external exposure (Route/Ingress) is out of scope. Use `kubectl port-forward` to reach it from your laptop:
 
 ```bash
 kubectl port-forward svc/kubeledger 5484:5484 -n kubeledger
@@ -266,19 +266,19 @@ Prerequisite: a working `node` + `npx` on the system `PATH`. After editing, **fu
 
 Most clients accept the same `http://localhost:5484/mcp` endpoint with their own configuration syntax. Examples:
 
-- **Gemini CLI** — declare the server in `~/.gemini/settings.json` under `mcpServers` (Google's [MCP integration docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/mcp.md)).
-- **Cursor / Windsurf / Cline** — add the server in the IDE's MCP settings, type `streamable-http`, URL `http://localhost:5484/mcp`.
-- **MCP Inspector** — `npx @modelcontextprotocol/inspector`, then connect to `http://localhost:5484/mcp` with transport `Streamable HTTP`.
+- **Gemini CLI**: declare the server in `~/.gemini/settings.json` under `mcpServers` (Google's [MCP integration docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/mcp.md)).
+- **Cursor / Windsurf / Cline**: add the server in the IDE's MCP settings, type `streamable-http`, URL `http://localhost:5484/mcp`.
+- **MCP Inspector**: `npx @modelcontextprotocol/inspector`, then connect to `http://localhost:5484/mcp` with transport `Streamable HTTP`.
 
 Clients that only speak stdio can use the [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridge, same pattern as the Claude Desktop example above.
 
 ### Example questions to ask the AI
 
-The assistant picks the right tool automatically — ask in plain language:
+The assistant picks the right tool automatically. Ask in plain language:
 
 - *"Which ten namespaces consume the most CPU over the past 14 days, excluding system namespaces?"*
 - *"Compare the monthly CPU trajectory of `openshift-monitoring` against `kube-system`."*
-- *"Identify CPU over-provisioned namespaces — those with a `usage / requests` ratio below 0.5."*
+- *"Identify CPU over-provisioned namespaces, those with a `usage / requests` ratio below 0.5."*
 - *"Show the hourly memory series for the `registry` namespace over the last 7 days, with min/max/mean."*
 - *"What proportion of cluster CPU is consumed by `openshift-*` namespaces today?"*
 
@@ -325,7 +325,7 @@ The assistant picks the right tool automatically — ask in plain language:
 3. Data is consolidated into hourly, daily, and monthly aggregates
 4. `dump_analytics` periodically writes the aggregates as JSON files into a shared volume
 5. The Flask API serves the data to the built-in web UI and Prometheus scraper
-6. *(optional)* The MCP container reads the same JSON files **read-only** and exposes them as 10 MCP tools to AI assistants — see [MCP Integration](#mcp-integration-ai-assistant)
+6. *(optional)* The MCP container reads the same JSON files **read-only** and exposes them as 10 MCP tools to AI assistants. See [MCP Integration](#mcp-integration-ai-assistant)
 
 ## Documentation
 

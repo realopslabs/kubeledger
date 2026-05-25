@@ -65,7 +65,7 @@ def get_backend_config_env(var_name, default_value=None):
 
 
 class Config:
-    version = "26.05.0-b1"
+    version = "26.05.1"
     db_round_decimals = 6
     db_non_allocatable = "non-allocatable"
     db_billing_hourly_rate = ".billing-hourly-rate"

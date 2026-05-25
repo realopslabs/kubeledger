@@ -63,11 +63,11 @@ service:
 # When enabled, a second container is added to the pod, reusing the same image
 # with command override "python3 -u ./mcp_server.py". It reads static/data/*.json
 # in read-only mode and exposes the data to MCP clients (e.g. Claude Desktop)
-# via HTTP/SSE. Disabled by default — opt-in. See docs/kubeledger-mcp-spec.md.
+# via HTTP/SSE. Disabled by default: opt-in. See docs/kubeledger-mcp-spec.md.
 mcp:
   enabled: false
   # Port at which the MCP server listens inside the container, and the port
-  # exposed by the Service. Defaults to 5484 — one above the backend's 5483,
+  # exposed by the Service. Defaults to 5484: one above the backend's 5483,
   # to keep the two KubeLedger ports adjacent and memorable.
   # Keep both aligned with the MCP server bind port.
   service:
@@ -118,7 +118,7 @@ networkPolicy:
   allowedSources: []
   # NetworkPolicyPeer entries authorized to reach the MCP server.
   # Typically a stricter set than allowedSources. Same shape as above.
-  # Empty list = no source authorized — MCP unreachable, even when
+  # Empty list = no source authorized: MCP unreachable, even when
   # mcp.enabled is true. Example: only allow the AI assistant proxy pod.
   #
   # mcpAllowedSources:

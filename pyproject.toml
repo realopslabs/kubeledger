@@ -1,7 +1,7 @@
 [project]
 name = "kubeledger"
-version = "26.05.0-b1"
-description = "Open source Kubernetes resource usage tracking, accounting and optimization — CPU, memory, and GPU usage"
+version = "26.05.1"
+description = "Open source Kubernetes resource usage tracking, accounting and optimization: CPU, memory, and GPU usage"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,10 +13,10 @@ dependencies = [
     "waitress>=3.0.2",
     "urllib3>=2.6.3",
     "werkzeug>=3.1.5",
-    # MCP server (optional sidecar — built into the image but only activated
+    # MCP server (optional sidecar: built into the image but only activated
     # by the helm chart when mcp.enabled=true; see docs/kubeledger-mcp-spec.md).
     # The SDK pulls in starlette + uvicorn + anyio as transitive deps for the
-    # SSE/HTTP transport — no need to list them explicitly.
+    # SSE/HTTP transport: no need to list them explicitly.
     "mcp>=1.27.1",
 ]
 authors = [{ name = "Rodrigue Chakode", email = "rodrigue.chakode@gmail.com" }]
@@ -54,7 +54,7 @@ select = [
     "C90", # mccabe (complexity)
     "PIE", # flake8-pie
     "SIM", # flake8-simplify
-    "UP",  # pyupgrade — modernise type hints + string formatting
+    "UP",  # pyupgrade: modernise type hints + string formatting
 ]
 
 ignore = [

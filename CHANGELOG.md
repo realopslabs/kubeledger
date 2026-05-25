@@ -1,34 +1,73 @@
 # Release Notes
 
-## v26.05.0-b1
+## v26.05.1
 
 ### Highlights
 
-This release introduces the **KubeLedger MCP server**, an optional read-only [Model Context Protocol](https://modelcontextprotocol.io/) surface that exposes the analytics produced by the backend (`static/data/*.json`) to MCP-aware clients (Claude Desktop, agents, IDEs). It enables clients to generate analyses, rankings, and visualizations that complement without duplicating the default web UI. The server never reads RRD databases directly, never writes, and embeds no LLM: it is a descriptive data surface.
-
-This release also ships a **default-on NetworkPolicy** that protects the pod (backend and MCP) at the network layer, replacing the absence of authentication on the MCP transport in v1.
+This is the first release of the **26.05.x line**, headlined by the introduction of the **KubeLedger MCP server**: a read-only [Model Context Protocol](https://modelcontextprotocol.io) surface that opens KubeLedger's analytics to AI assistants (Claude Desktop, Claude Code, Google Gemini CLI, Cursor, Windsurf, MCP Inspector, and the broader MCP-aware ecosystem). The release also consolidates the security fixes from v26.01.1, refreshes dependencies and CI tooling, and polishes the backend, the rebrand, and the developer experience.
 
 ### New features
 
 #### MCP server (optional, opt-in)
 
-- New `mcp_server.py` module distributed in the container image.
-- **Transport**: Streamable HTTP only with a single endpoint `/mcp`, the modern MCP transport supported by Claude Desktop, Claude Code, MCP Inspector, and `mcp-remote` proxies. SSE (legacy two-endpoint pattern) and stdio (subprocess) transports are not exposed in v1; KubeLedger's data lives in-cluster and is naturally consumed over HTTP via the pod's `Service`, not by spawning a local subprocess. A future release may reintroduce SSE if a non-trivial deployment proves it useful.
-- Helm: a second container `mcp` is added to the pod when `mcp.enabled=true` (disabled by default), reusing the same image with `command: ["python3", "-u", "./mcp_server.py"]`. The shared `static/data/` volume is mounted **read-only** in the MCP container.
-- Helm: the existing Service is extended with a second named port `mcp` (default `5484`), conditional on `mcp.enabled`. Type stays `ClusterIP` intra-cluster access only in v1.
-- Configuration: the MCP server resolves its data directory from `KL_MCP_DATA_DIR` / `KOA_MCP_DATA_DIR` (default `./static/data`), consistent with the existing `KL_*`/`KOA_*` convention. Listen address/port via `KL_MCP_LISTEN_HOST` (default `0.0.0.0`) and `KL_MCP_LISTEN_PORT` (default `5484`).
+- **New `mcp_server.py` module** shipped in the container image. Ten read-only tools expose every namespace, scale, efficiency factor and trend as a queryable surface for AI assistants. See [`kubeledger-mcp-spec.md`](./kubeledger-mcp-spec.md) and the [Enable the MCP Server guide](https://kubeledger.io/docs/enable-kubeledger-mcp/).
+- **Streamable HTTP transport** at the single endpoint `/mcp` (port `5484` by default, adjacent to the backend's `5483`). SSE and stdio are intentionally out of scope for v1.
+- **Read-only protocol annotations** on every tool (`ToolAnnotations.readOnlyHint=true`) so MCP clients can skip confirmation prompts and surface accurate UI hints.
+- **Helm chart**: a second container `mcp` is toggled by `mcp.enabled=true` (disabled by default), reusing the same image. The Service grows a named port `mcp` conditionally; both ports are protected by a new **default-on `NetworkPolicy` (deny-by-default)** which is the v1 access-control mechanism (no auth at the tool layer).
+- **MCP SDK pinned** to `mcp>=1.27.1` for stable `structuredContent` + `outputSchema` support.
+- **Configuration** via `KL_MCP_DATA_DIR`, `KL_MCP_LISTEN_HOST`, `KL_MCP_LISTEN_PORT` (with `KOA_*` legacy fallback), aligned with the existing convention.
 
-#### NetworkPolicy (default on)
+### Security fixes
 
-- New template `templates/networkpolicy.yaml` shipped with the chart. Covers **both** the backend and MCP ports, since the MCP server has no authentication in v1 and the policy is the only access-control mechanism.
-- Default: `networkPolicy.enabled=true`, `allowedSources=[]`, `mcpAllowedSources=[]`  (**deny-by-default**).
-- **Operator action required** on clusters that enforce NetworkPolicy (e.g. OpenShift with OVN-Kubernetes): set `networkPolicy.allowedSources` (and `mcpAllowedSources` when MCP is enabled) to the legitimate `NetworkPolicyPeer` entries (`podSelector`, `namespaceSelector`, `ipBlock`). Leaving these lists empty filters all ingress traffic to the pod — this is the intended safe failure mode, not a bug.
-- To disable the policy and rely on cluster-level controls instead, set `networkPolicy.enabled=false`.
+Inherits the urllib3, werkzeug, waitress and flask-cors CVE fixes from **v26.01.1**. See the v26.01.1 entry below for the complete list (issues #6 through #17).
 
-### Out of scope for v1
+### Bug fixes
 
-- External exposure of the MCP server (OpenShift `Route` / Ingress) and token authentication (the MCP stays in `ClusterIP` for now).
-- LLM calls, predictions, or prescriptive recommendations. This means the MCP server is purely descriptive.
+- Fixed typo in `request_efficiency_db_file_extension` method.
+- Fixed Docker badge links in the README.
+- Fixed footer links on the marketing site.
+
+### Improvements
+
+- **Backend**: logger prefix unified to `kubeledger`; default DB location moved to `$HOME/.kubeledger/db` (cleaner fallback than the legacy `/tmp`).
+- **Rebrand cleanup**: removed the lingering `kube-opex-analytics` naming from source files; simplified the container entrypoint.
+- **README**: expanded customization examples for Helm (OpenShift, custom storage, DCGM integration); added the *MCP Integration* section with quick-start steps and example questions to ask the AI; reworked the Architecture diagram to show the MCP container and the shared volume.
+
+### Dependencies
+
+- `flask-cors>=6.0.2` (was `>=6.0.0`)
+- `waitress>=3.0.2` (was `>=3.0.1`)
+- `mcp>=1.27.1` (new)
+- Python interpreter requirement bumped via `pyproject.toml`; dependencies pinned via `uv.lock`.
+
+### Style & code quality
+
+- Enabled the `PIE` / `SIM` / `UP` ruff linter families across the codebase; ruff `target-version` aligned with `requires-python` at `py312`.
+- Replaced blind `except:` clauses in `backend.py` with explicit `Exception` handling (E722 compliance).
+- New `mcp_server.py` written in Python 3.12 idioms (PEP 604 unions, f-strings, modern stdlib annotations).
+- 188 unit tests added covering the MCP layer (data access, dataset discovery, every tool, freshness warnings, cross-tool metadata audit).
+
+### CI / Build
+
+- GitHub Actions bumps: `actions/checkout` 5→6; `docker/build-push-action` 5→6→7; `docker/login-action` 3→4; `docker/setup-buildx-action` 3→4; `docker/metadata-action` 5→6; `azure/setup-helm` 4→5.
+- GHCR build workflow refined: cache configuration tuned, build/push step adjusted.
+
+### Operator notes
+
+- Enable MCP at deploy time:
+  ```bash
+  helm upgrade --install kubeledger ./manifests/kubeledger/helm -n kubeledger --set mcp.enabled=true
+  ```
+- Reach the service from your workstation:
+  ```bash
+  kubectl port-forward svc/kubeledger 5484:5484 -n kubeledger
+  ```
+- The chart-shipped `NetworkPolicy` is **active by default** and starts deny-by-default. On clusters that enforce NetworkPolicy (e.g. OpenShift OVN-Kubernetes), declare authorized sources via `networkPolicy.allowedSources` / `networkPolicy.mcpAllowedSources`, or set `networkPolicy.enabled=false` to fall back to cluster-level controls.
+
+### Out of scope for this release
+
+- External exposure of the MCP server (OpenShift Route / Ingress) and token authentication: the MCP stays `ClusterIP` in v1.
+- LLM calls, predictions, or prescriptive recommendations: the MCP server remains purely descriptive.
 
 ## v26.01.1
 

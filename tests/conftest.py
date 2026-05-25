@@ -1,4 +1,4 @@
-"""Pytest configuration for tests/ — adds the repo root to sys.path.
+"""Pytest configuration for tests/: adds the repo root to sys.path.
 
 Lets tests under tests/ import modules placed at the repository root
 (``mcp_server``, etc.) the same way ``test_backend.py`` already does
