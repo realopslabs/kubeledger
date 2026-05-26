@@ -56,7 +56,7 @@ jobs:
           echo "CHART_PACKAGE=$(ls .helm-packages/*.tgz)" >> $GITHUB_ENV
 
       - name: Set up ORAS
-        uses: oras-project/setup-oras@v1
+        uses: oras-project/setup-oras@v2
 
       - name: Login to GitHub Container Registry
         run: |
